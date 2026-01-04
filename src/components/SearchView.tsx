@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import type { Exercise } from '../hooks/useExerciseDB'
+import type { Exercise, SearchFilters } from '../hooks/useExerciseDB'
 import { useExerciseDB, debounce } from '../hooks/useExerciseDB'
 import type { Day } from '../lib/state'
 import { FilterPanel } from './FilterPanel'
+import { ExerciseDetailModal } from './ExerciseDetailModal'
 
 interface SearchViewProps {
   activeDay?: string
@@ -17,47 +18,30 @@ export function SearchView({
   onAddToDay,
   onDoNow,
 }: SearchViewProps) {
-  const [query, setQuery] = useState('')
+  const [filters, setFilters] = useState<SearchFilters>({})
   const [showFilters, setShowFilters] = useState(false)
-  const [filters, setFilters] = useState<{
-    muscle?: string
-    equipment?: string
-    bodyPart?: string
-  }>({})
+  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null)
 
-  const { results, loading, search } = useExerciseDB()
+  const { results, loading, search, dbReady } = useExerciseDB()
 
   // Debounced search
   const debouncedSearch = useMemo(
-    () => debounce((params: Parameters<typeof search>[0]) => search(params), 300),
+    () => debounce((f: SearchFilters) => search(f), 300),
     [search]
   )
 
+  // Trigger search when filters change
+  useEffect(() => {
+    debouncedSearch(filters)
+  }, [filters, debouncedSearch])
+
   const handleQueryChange = useCallback((value: string) => {
-    setQuery(value)
-    debouncedSearch({
-      name: value,
-      targetMuscles: filters.muscle,
-      equipments: filters.equipment,
-      bodyParts: filters.bodyPart,
-    })
-  }, [debouncedSearch, filters])
+    setFilters(f => ({ ...f, query: value }))
+  }, [])
 
-  const handleFilterChange = useCallback((newFilters: typeof filters) => {
+  const handleFilterChange = useCallback((newFilters: SearchFilters) => {
     setFilters(newFilters)
-    debouncedSearch({
-      name: query,
-      targetMuscles: newFilters.muscle,
-      equipments: newFilters.equipment,
-      bodyParts: newFilters.bodyPart,
-    })
-  }, [debouncedSearch, query])
-
-  const removeFilter = (key: keyof typeof filters) => {
-    const newFilters = { ...filters }
-    delete newFilters[key]
-    handleFilterChange(newFilters)
-  }
+  }, [])
 
   // Check if exercise is already in a day
   const getExerciseDay = (exerciseId: string): string | null => {
@@ -69,199 +53,237 @@ export function SearchView({
     return null
   }
 
-  const activeFilters = Object.entries(filters).filter(([, v]) => v)
+  const hasActiveFilters = Object.keys(filters).some(k => k !== 'query' && filters[k as keyof SearchFilters])
 
   return (
-    <div className="p-4 space-y-4">
-      {/* Search Input */}
-      <div className="flex gap-2">
-        <div className="flex-1 relative">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => handleQueryChange(e.target.value)}
-            placeholder="Search exercises..."
-            autoFocus
-            className="w-full px-4 py-3 bg-[var(--surface)] border border-[var(--border)] rounded-lg pl-10"
-          />
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
-            xmlns="http://www.w3.org/2000/svg"
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+    <div className="flex flex-col h-full">
+      {/* Search Header - Sticky */}
+      <div className="sticky top-0 z-10 bg-[var(--bg)] p-4 pb-2 border-b border-[var(--border)]">
+        {/* Search Input */}
+        <div className="flex gap-2">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={filters.query ?? ''}
+              onChange={(e) => handleQueryChange(e.target.value)}
+              placeholder="Search exercises..."
+              autoFocus
+              className="w-full px-4 py-3 bg-[var(--surface)] border border-[var(--border)] rounded-lg pl-10"
+            />
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`px-3 py-2 border rounded-lg relative ${
+              showFilters || hasActiveFilters
+                ? 'border-[var(--text)] bg-[var(--surface)]'
+                : 'border-[var(--border)]'
+            }`}
           >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="6" y1="12" x2="18" y2="12" />
+              <line x1="8" y1="18" x2="16" y2="18" />
+            </svg>
+            {hasActiveFilters && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full" />
+            )}
+          </button>
         </div>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className={`px-3 py-2 border rounded-lg ${
-            showFilters || activeFilters.length > 0
-              ? 'border-[var(--text)] bg-[var(--surface)]'
-              : 'border-[var(--border)]'
-          }`}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="4" y1="6" x2="20" y2="6" />
-            <line x1="6" y1="12" x2="18" y2="12" />
-            <line x1="8" y1="18" x2="16" y2="18" />
-          </svg>
-        </button>
       </div>
 
-      {/* Filter Panel */}
-      {showFilters && (
-        <FilterPanel
-          filters={filters}
-          onChange={handleFilterChange}
-          onClose={() => setShowFilters(false)}
-        />
-      )}
-
-      {/* Active Filters Chips */}
-      {activeFilters.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {activeFilters.map(([key, value]) => (
-            <button
-              key={key}
-              onClick={() => removeFilter(key as keyof typeof filters)}
-              className="px-3 py-1 bg-[var(--surface)] border border-[var(--border)] rounded-full text-sm flex items-center gap-1"
-            >
-              {value}
-              <span className="text-[var(--text-muted)]">×</span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Loading */}
-      {loading && (
-        <div className="text-center py-8 text-[var(--text-muted)]">
-          Searching...
-        </div>
-      )}
-
-      {/* Results - Grid */}
-      {!loading && results.length > 0 && (
-        <div className="grid grid-cols-2 gap-3">
-          {results.map((exercise) => (
-            <SearchResult
-              key={exercise.exerciseId}
-              exercise={exercise}
-              inDay={getExerciseDay(exercise.exerciseId)}
-              activeDay={activeDay}
-              onAdd={(dayName) => onAddToDay(dayName, exercise.exerciseId)}
-              onDoNow={() => onDoNow(exercise.exerciseId)}
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Filter Panel */}
+        {showFilters && (
+          <div className="p-4 border-b border-[var(--border)] bg-[var(--surface)]">
+            <FilterPanel
+              filters={filters}
+              onChange={handleFilterChange}
+              resultCount={results.length}
             />
-          ))}
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* Empty state */}
-      {!loading && query && results.length === 0 && (
-        <div className="text-center py-8 text-[var(--text-muted)]">
-          No exercises found
-        </div>
-      )}
+        <div className="p-4">
+          {/* Loading */}
+          {!dbReady && (
+            <div className="text-center py-8 text-[var(--text-muted)]">
+              Loading exercise database...
+            </div>
+          )}
 
-      {/* Initial state */}
-      {!loading && !query && activeFilters.length === 0 && (
-        <div className="text-center py-8 text-[var(--text-muted)]">
-          Type to search or use filters
+          {/* Loading search */}
+          {dbReady && loading && (
+            <div className="text-center py-8 text-[var(--text-muted)]">
+              Searching...
+            </div>
+          )}
+
+          {/* Results - Grid */}
+          {dbReady && !loading && results.length > 0 && (
+            <div className="grid grid-cols-2 gap-3">
+              {results.map((exercise) => (
+                <SearchResultCard
+                  key={exercise.exerciseId}
+                  exercise={exercise}
+                  inDay={getExerciseDay(exercise.exerciseId)}
+                  onClick={() => setSelectedExercise(exercise)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Empty state */}
+          {dbReady && !loading && (filters.query || hasActiveFilters) && results.length === 0 && (
+            <div className="text-center py-8 text-[var(--text-muted)]">
+              No exercises found
+            </div>
+          )}
+
+          {/* Initial state */}
+          {dbReady && !loading && !filters.query && !hasActiveFilters && (
+            <div className="text-center py-8 text-[var(--text-muted)]">
+              <p>Search or filter to find exercises</p>
+              <button
+                onClick={() => setShowFilters(true)}
+                className="mt-2 text-blue-400 hover:underline"
+              >
+                Open filters to browse
+              </button>
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* Exercise Detail Modal */}
+      {selectedExercise && (
+        <ExerciseDetailModal
+          exercise={selectedExercise}
+          onClose={() => setSelectedExercise(null)}
+          activeDay={activeDay}
+          inDay={getExerciseDay(selectedExercise.exerciseId)}
+          onAddToDay={(dayName) => onAddToDay(dayName, selectedExercise.exerciseId)}
+          onDoNow={() => onDoNow(selectedExercise.exerciseId)}
+        />
       )}
     </div>
   )
 }
 
-interface SearchResultProps {
+interface SearchResultCardProps {
   exercise: Exercise
   inDay: string | null
-  activeDay?: string
-  onAdd: (dayName: string) => void
-  onDoNow: () => void
+  onClick: () => void
 }
 
-function SearchResult({
+function SearchResultCard({
   exercise,
   inDay,
-  activeDay,
-  onAdd,
-  onDoNow,
-}: SearchResultProps) {
+  onClick,
+}: SearchResultCardProps) {
   const [imageIndex, setImageIndex] = useState(0)
-  const imageUrls = exercise.imageUrls ?? []
 
   useEffect(() => {
-    if (imageUrls.length <= 1) return
+    if (exercise.imageUrls.length <= 1) return
     const interval = setInterval(() => {
-      setImageIndex(i => (i + 1) % imageUrls.length)
+      setImageIndex(i => (i + 1) % exercise.imageUrls.length)
     }, 1000)
     return () => clearInterval(interval)
-  }, [imageUrls.length])
+  }, [exercise.imageUrls.length])
 
-  const meta = [
-    exercise.targetMuscles?.[0],
-    exercise.equipments?.[0],
-  ].filter(Boolean).join(' · ')
+  const levelColors: Record<string, string> = {
+    beginner: 'bg-green-500/80',
+    intermediate: 'bg-yellow-500/80',
+    expert: 'bg-red-500/80',
+  }
 
   return (
-    <div className="bg-[var(--surface)] rounded-lg overflow-hidden">
-      {/* Exercise image - large */}
-      {imageUrls.length > 0 ? (
-        <img
-          src={imageUrls[imageIndex]}
-          alt={exercise.name}
-          loading="lazy"
-          className="w-full aspect-square object-cover bg-[var(--border)]"
-        />
-      ) : (
-        <div className="w-full aspect-square bg-[var(--border)] flex items-center justify-center text-[var(--text-muted)] text-2xl">
-          ?
-        </div>
-      )}
-
-      <div className="p-3">
-        <div className="font-medium text-sm line-clamp-2 min-h-[2.5rem]">{exercise.name}</div>
-        <div className="text-xs text-[var(--text-muted)] truncate">{meta}</div>
-        {inDay && (
-          <div className="text-xs text-[var(--success)] mt-1">
-            In: {inDay}
+    <div
+      onClick={onClick}
+      className="bg-[var(--surface)] rounded-lg overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+    >
+      {/* Image with overlays */}
+      <div className="relative aspect-square">
+        {exercise.imageUrls.length > 0 ? (
+          <img
+            src={exercise.imageUrls[imageIndex]}
+            alt={exercise.name}
+            loading="lazy"
+            className="w-full h-full object-cover bg-[var(--border)]"
+          />
+        ) : (
+          <div className="w-full h-full bg-[var(--border)] flex items-center justify-center text-[var(--text-muted)] text-2xl">
+            ?
           </div>
         )}
 
-        <div className="flex gap-2 mt-2">
-          {activeDay && !inDay && (
-            <button
-              onClick={() => onAdd(activeDay)}
-              className="flex-1 py-1.5 text-xs border border-[var(--border)] rounded-lg hover:bg-[var(--bg)]"
-            >
-              + Add
-            </button>
+        {/* Level badge */}
+        <span className={`absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-bold text-white ${levelColors[exercise.level] ?? 'bg-gray-500'}`}>
+          {exercise.level.charAt(0).toUpperCase()}
+        </span>
+
+        {/* In day badge */}
+        {inDay && (
+          <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--success)] text-white">
+            {inDay}
+          </span>
+        )}
+
+        {/* Bottom gradient with info */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 pt-8">
+          <div className="flex items-center gap-1 text-[10px] text-white/80">
+            {exercise.equipment && (
+              <span className="truncate">{exercise.equipment}</span>
+            )}
+            {exercise.force && (
+              <>
+                <span>·</span>
+                <span>{exercise.force}</span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-2">
+        <div className="font-medium text-sm line-clamp-1">{exercise.name}</div>
+        <div className="flex flex-wrap gap-1 mt-1">
+          {exercise.targetMuscles.slice(0, 2).map(muscle => (
+            <span key={muscle} className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400">
+              {muscle}
+            </span>
+          ))}
+          {exercise.targetMuscles.length > 2 && (
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg)] text-[var(--text-muted)]">
+              +{exercise.targetMuscles.length - 2}
+            </span>
           )}
-          <button
-            onClick={onDoNow}
-            className="flex-1 py-1.5 text-xs bg-[var(--text)] text-[var(--bg)] rounded-lg"
-          >
-            ▶ Do
-          </button>
         </div>
       </div>
     </div>

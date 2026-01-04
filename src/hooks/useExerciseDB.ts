@@ -4,20 +4,94 @@ const EXERCISES_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-d
 const IMAGE_BASE_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'
 const CACHE_KEY = 'workout-exercise-cache-v3'
 const DB_CACHE_KEY = 'workout-free-exercise-db-v2'
+const FILTER_OPTIONS_KEY = 'workout-filter-options'
+
+// Filter options - will be populated from data
+export interface FilterOptions {
+  levels: string[]
+  categories: string[]
+  forces: string[]
+  mechanics: string[]
+  equipment: string[]
+  muscles: string[]
+}
+
+// Default empty options
+let filterOptions: FilterOptions = loadFilterOptions() ?? {
+  levels: [],
+  categories: [],
+  forces: [],
+  mechanics: [],
+  equipment: [],
+  muscles: [],
+}
+
+function loadFilterOptions(): FilterOptions | null {
+  try {
+    const stored = localStorage.getItem(FILTER_OPTIONS_KEY)
+    if (stored) return JSON.parse(stored) as FilterOptions
+  } catch {
+    // Ignore
+  }
+  return null
+}
+
+function saveFilterOptions(options: FilterOptions) {
+  try {
+    localStorage.setItem(FILTER_OPTIONS_KEY, JSON.stringify(options))
+  } catch {
+    // Ignore
+  }
+}
+
+function deriveFilterOptions(exercises: Exercise[]): FilterOptions {
+  const levels = new Set<string>()
+  const categories = new Set<string>()
+  const forces = new Set<string>()
+  const mechanics = new Set<string>()
+  const equipment = new Set<string>()
+  const muscles = new Set<string>()
+
+  for (const ex of exercises) {
+    if (ex.level) levels.add(ex.level)
+    if (ex.category) categories.add(ex.category)
+    if (ex.force) forces.add(ex.force)
+    if (ex.mechanic) mechanics.add(ex.mechanic)
+    if (ex.equipment) equipment.add(ex.equipment)
+    ex.targetMuscles.forEach(m => muscles.add(m))
+    ex.secondaryMuscles.forEach(m => muscles.add(m))
+  }
+
+  // Sort for consistent UI
+  const levelOrder = ['beginner', 'intermediate', 'expert']
+  const sortedLevels = [...levels].sort((a, b) => levelOrder.indexOf(a) - levelOrder.indexOf(b))
+
+  return {
+    levels: sortedLevels,
+    categories: [...categories].sort(),
+    forces: [...forces].sort(),
+    mechanics: [...mechanics].sort(),
+    equipment: [...equipment].sort(),
+    muscles: [...muscles].sort(),
+  }
+}
+
+export function getFilterOptions(): FilterOptions {
+  return filterOptions
+}
 
 export interface Exercise {
   exerciseId: string
   name: string
-  equipments: string[]
-  bodyParts: string[]
-  exerciseType: string
+  equipment: string | null
+  category: string
   targetMuscles: string[]
   secondaryMuscles: string[]
   imageUrls: string[]
-  instructions?: string[]
-  level?: string
-  force?: string
-  mechanic?: string
+  instructions: string[]
+  level: string
+  force: string | null
+  mechanic: string | null
 }
 
 interface RawExercise {
@@ -34,11 +108,14 @@ interface RawExercise {
   images: string[]
 }
 
-interface SearchParams {
-  name?: string
-  targetMuscles?: string
-  equipments?: string
-  bodyParts?: string
+export interface SearchFilters {
+  query?: string
+  level?: string
+  category?: string
+  force?: string
+  mechanic?: string
+  equipment?: string
+  muscle?: string
 }
 
 // Convert raw exercise to our format
@@ -46,16 +123,15 @@ function mapExercise(raw: RawExercise): Exercise {
   return {
     exerciseId: raw.id,
     name: raw.name,
-    equipments: raw.equipment ? [raw.equipment] : [],
-    bodyParts: raw.primaryMuscles, // Use primary muscles as body parts
-    exerciseType: raw.category,
+    equipment: raw.equipment,
+    category: raw.category,
     targetMuscles: raw.primaryMuscles,
     secondaryMuscles: raw.secondaryMuscles,
     imageUrls: raw.images.map(img => `${IMAGE_BASE_URL}${img}`),
     instructions: raw.instructions,
     level: raw.level,
-    force: raw.force ?? undefined,
-    mechanic: raw.mechanic ?? undefined,
+    force: raw.force,
+    mechanic: raw.mechanic,
   }
 }
 
@@ -112,6 +188,11 @@ let dbLoading = false
 let dbLoaded = allExercises.length > 0
 const dbLoadCallbacks: (() => void)[] = []
 
+// Initialize filter options from cached exercises if available
+if (allExercises.length > 0 && filterOptions.levels.length === 0) {
+  filterOptions = deriveFilterOptions(allExercises)
+}
+
 // Load the full exercise database
 async function loadExerciseDB(): Promise<Exercise[]> {
   if (dbLoaded) return allExercises
@@ -134,6 +215,10 @@ async function loadExerciseDB(): Promise<Exercise[]> {
     allExercises.forEach(ex => exerciseCache.set(ex.exerciseId, ex))
     saveExerciseCache(exerciseCache)
     saveDBCache(allExercises)
+
+    // Derive and cache filter options
+    filterOptions = deriveFilterOptions(allExercises)
+    saveFilterOptions(filterOptions)
 
     dbLoaded = true
     dbLoadCallbacks.forEach(cb => cb())
@@ -166,11 +251,16 @@ export function useExerciseDB() {
     }
   }, [])
 
-  const search = useCallback(async (params: SearchParams) => {
-    const searchTerm = params.name?.toLowerCase().trim() ?? ''
-    searchTermRef.current = searchTerm
+  const search = useCallback(async (filters: SearchFilters) => {
+    const query = filters.query?.toLowerCase().trim() ?? ''
+    searchTermRef.current = query
 
-    if (!searchTerm && !params.targetMuscles && !params.equipments && !params.bodyParts) {
+    // Check if any filter is active
+    const hasFilters = query || filters.level || filters.category ||
+                       filters.force || filters.mechanic ||
+                       filters.equipment || filters.muscle
+
+    if (!hasFilters) {
       setResults([])
       return
     }
@@ -183,37 +273,51 @@ export function useExerciseDB() {
       const exercises = dbLoaded ? allExercises : await loadExerciseDB()
 
       // Check if search term changed while loading
-      if (searchTermRef.current !== searchTerm) return
+      if (searchTermRef.current !== query) return
 
       // Filter exercises
       let filtered = exercises
 
-      if (searchTerm) {
+      // Text search across multiple fields
+      if (query) {
         filtered = filtered.filter(ex =>
-          ex.name.toLowerCase().includes(searchTerm) ||
-          ex.targetMuscles.some(m => m.toLowerCase().includes(searchTerm)) ||
-          ex.equipments.some(e => e.toLowerCase().includes(searchTerm))
+          ex.name.toLowerCase().includes(query) ||
+          ex.targetMuscles.some(m => m.toLowerCase().includes(query)) ||
+          ex.secondaryMuscles.some(m => m.toLowerCase().includes(query)) ||
+          (ex.equipment?.toLowerCase().includes(query) ?? false) ||
+          ex.category.toLowerCase().includes(query) ||
+          (ex.force?.toLowerCase().includes(query) ?? false) ||
+          (ex.mechanic?.toLowerCase().includes(query) ?? false) ||
+          ex.level.toLowerCase().includes(query)
         )
       }
 
-      if (params.targetMuscles) {
-        const muscle = params.targetMuscles.toLowerCase()
-        filtered = filtered.filter(ex =>
-          ex.targetMuscles.some(m => m.toLowerCase().includes(muscle))
-        )
+      // Apply filters
+      if (filters.level) {
+        filtered = filtered.filter(ex => ex.level === filters.level)
       }
 
-      if (params.equipments) {
-        const equip = params.equipments.toLowerCase()
-        filtered = filtered.filter(ex =>
-          ex.equipments.some(e => e.toLowerCase().includes(equip))
-        )
+      if (filters.category) {
+        filtered = filtered.filter(ex => ex.category === filters.category)
       }
 
-      if (params.bodyParts) {
-        const part = params.bodyParts.toLowerCase()
+      if (filters.force) {
+        filtered = filtered.filter(ex => ex.force === filters.force)
+      }
+
+      if (filters.mechanic) {
+        filtered = filtered.filter(ex => ex.mechanic === filters.mechanic)
+      }
+
+      if (filters.equipment) {
+        filtered = filtered.filter(ex => ex.equipment === filters.equipment)
+      }
+
+      if (filters.muscle) {
+        const muscle = filters.muscle.toLowerCase()
         filtered = filtered.filter(ex =>
-          ex.bodyParts.some(b => b.toLowerCase().includes(part))
+          ex.targetMuscles.some(m => m.toLowerCase() === muscle) ||
+          ex.secondaryMuscles.some(m => m.toLowerCase() === muscle)
         )
       }
 
@@ -258,6 +362,12 @@ export function useExerciseDB() {
     }
   }, [])
 
+  // Get all exercises (for browsing)
+  const getAllExercises = useCallback((): Exercise[] => {
+    void cacheVersion
+    return allExercises
+  }, [cacheVersion])
+
   return {
     results,
     loading,
@@ -266,6 +376,7 @@ export function useExerciseDB() {
     getExercise,
     fetchExercise,
     fetchExercises,
+    getAllExercises,
     dbReady,
   }
 }

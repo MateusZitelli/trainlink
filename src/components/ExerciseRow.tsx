@@ -5,8 +5,13 @@ interface Exercise {
   exerciseId: string
   name: string
   targetMuscles?: string[]
-  equipments?: string[]
+  equipment?: string | null
   imageUrls?: string[]
+  instructions?: string[]
+  level?: string
+  force?: string | null
+  mechanic?: string | null
+  category?: string
 }
 
 interface ExerciseRowProps {
@@ -105,7 +110,7 @@ export function ExerciseRow({
   const name = exercise?.name ?? exerciseId
   const meta = [
     exercise?.targetMuscles?.[0],
-    exercise?.equipments?.[0],
+    exercise?.equipment,
   ].filter(Boolean).join(' · ')
 
   const isActive = setStartedAt !== null
@@ -367,6 +372,25 @@ export function ExerciseRow({
           </div>
         </div>
       </div>
+
+      {/* Instructions - collapsible */}
+      {exercise?.instructions && exercise.instructions.length > 0 && (
+        <details className="bg-[var(--bg)] rounded-lg">
+          <summary className="px-3 py-2 text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text)]">
+            How to perform ({exercise.instructions.length} steps)
+          </summary>
+          <ol className="px-3 pb-3 space-y-2">
+            {exercise.instructions.map((step, i) => (
+              <li key={i} className="flex gap-2 text-sm">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-[var(--surface)] flex items-center justify-center text-xs text-[var(--text-muted)]">
+                  {i + 1}
+                </span>
+                <span className="text-[var(--text-muted)]">{step}</span>
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
 
       {/* Start / Finish buttons */}
       {!isActive ? (

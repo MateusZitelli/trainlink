@@ -1,55 +1,58 @@
-interface Filters {
-  muscle?: string
-  equipment?: string
-  bodyPart?: string
-}
+import type { SearchFilters } from '../hooks/useExerciseDB'
+import { getFilterOptions } from '../hooks/useExerciseDB'
 
 interface FilterPanelProps {
-  filters: Filters
-  onChange: (filters: Filters) => void
-  onClose: () => void
+  filters: SearchFilters
+  onChange: (filters: SearchFilters) => void
+  resultCount: number
 }
 
-const MUSCLES = [
-  'Chest',
-  'Back',
-  'Shoulders',
-  'Biceps',
-  'Triceps',
-  'Forearms',
-  'Core',
-  'Quadriceps',
-  'Hamstrings',
-  'Glutes',
-  'Calves',
-]
+function FilterChip({
+  label,
+  selected,
+  onClick,
+}: {
+  label: string
+  selected: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+        selected
+          ? 'bg-[var(--text)] text-[var(--bg)]'
+          : 'bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]'
+      }`}
+    >
+      {label}
+    </button>
+  )
+}
 
-const EQUIPMENT = [
-  'Barbell',
-  'Dumbbell',
-  'Cable',
-  'Machine',
-  'Bodyweight',
-  'Kettlebell',
-  'Band',
-  'EZ Bar',
-]
+function FilterSection({
+  title,
+  children,
+}: {
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <h3 className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-2">{title}</h3>
+      <div className="flex flex-wrap gap-1.5">
+        {children}
+      </div>
+    </div>
+  )
+}
 
-const BODY_PARTS = [
-  'Upper Body',
-  'Lower Body',
-  'Core',
-  'Full Body',
-  'Arms',
-  'Legs',
-  'Back',
-  'Chest',
-]
+export function FilterPanel({ filters, onChange, resultCount }: FilterPanelProps) {
+  const options = getFilterOptions()
 
-export function FilterPanel({ filters, onChange, onClose }: FilterPanelProps) {
-  const handleChange = (key: keyof Filters, value: string) => {
+  const handleToggle = (key: keyof SearchFilters, value: string) => {
     const newFilters = { ...filters }
-    if (value === '') {
+    if (filters[key] === value) {
       delete newFilters[key]
     } else {
       newFilters[key] = value
@@ -57,80 +60,119 @@ export function FilterPanel({ filters, onChange, onClose }: FilterPanelProps) {
     onChange(newFilters)
   }
 
+  const activeCount = Object.keys(filters).filter(k => k !== 'query' && filters[k as keyof SearchFilters]).length
+
   const handleReset = () => {
-    onChange({})
+    onChange({ query: filters.query })
   }
 
   return (
-    <div className="p-4 bg-[var(--surface)] rounded-lg border border-[var(--border)] space-y-4">
-      <div>
-        <label className="block text-sm text-[var(--text-muted)] mb-2">
-          Muscle
-        </label>
-        <select
-          value={filters.muscle ?? ''}
-          onChange={(e) => handleChange('muscle', e.target.value)}
-          className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg"
-        >
-          <option value="">Any</option>
-          {MUSCLES.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm">
+          <span className="font-medium">{resultCount}</span>
+          <span className="text-[var(--text-muted)]"> exercises</span>
+          {activeCount > 0 && (
+            <span className="text-[var(--text-muted)]"> ({activeCount} filters)</span>
+          )}
+        </div>
+        {activeCount > 0 && (
+          <button
+            onClick={handleReset}
+            className="text-xs text-[var(--text-muted)] hover:text-[var(--text)]"
+          >
+            Clear filters
+          </button>
+        )}
       </div>
 
-      <div>
-        <label className="block text-sm text-[var(--text-muted)] mb-2">
-          Equipment
-        </label>
-        <select
-          value={filters.equipment ?? ''}
-          onChange={(e) => handleChange('equipment', e.target.value)}
-          className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg"
-        >
-          <option value="">Any</option>
-          {EQUIPMENT.map((e) => (
-            <option key={e} value={e}>
-              {e}
-            </option>
+      {/* Level */}
+      {options.levels.length > 0 && (
+        <FilterSection title="Level">
+          {options.levels.map(level => (
+            <FilterChip
+              key={level}
+              label={level}
+              selected={filters.level === level}
+              onClick={() => handleToggle('level', level)}
+            />
           ))}
-        </select>
-      </div>
+        </FilterSection>
+      )}
 
-      <div>
-        <label className="block text-sm text-[var(--text-muted)] mb-2">
-          Body Part
-        </label>
-        <select
-          value={filters.bodyPart ?? ''}
-          onChange={(e) => handleChange('bodyPart', e.target.value)}
-          className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg"
-        >
-          <option value="">Any</option>
-          {BODY_PARTS.map((b) => (
-            <option key={b} value={b}>
-              {b}
-            </option>
+      {/* Category */}
+      {options.categories.length > 0 && (
+        <FilterSection title="Category">
+          {options.categories.map(cat => (
+            <FilterChip
+              key={cat}
+              label={cat}
+              selected={filters.category === cat}
+              onClick={() => handleToggle('category', cat)}
+            />
           ))}
-        </select>
-      </div>
+        </FilterSection>
+      )}
 
-      <div className="flex gap-3">
-        <button
-          onClick={handleReset}
-          className="flex-1 py-2 border border-[var(--border)] rounded-lg text-sm"
-        >
-          Reset
-        </button>
-        <button
-          onClick={onClose}
-          className="flex-1 py-2 bg-[var(--text)] text-[var(--bg)] rounded-lg text-sm"
-        >
-          Apply
-        </button>
-      </div>
+      {/* Force & Mechanic */}
+      {(options.forces.length > 0 || options.mechanics.length > 0) && (
+        <div className="grid grid-cols-2 gap-4">
+          {options.forces.length > 0 && (
+            <FilterSection title="Force">
+              {options.forces.map(force => (
+                <FilterChip
+                  key={force}
+                  label={force}
+                  selected={filters.force === force}
+                  onClick={() => handleToggle('force', force)}
+                />
+              ))}
+            </FilterSection>
+          )}
+
+          {options.mechanics.length > 0 && (
+            <FilterSection title="Type">
+              {options.mechanics.map(mech => (
+                <FilterChip
+                  key={mech}
+                  label={mech}
+                  selected={filters.mechanic === mech}
+                  onClick={() => handleToggle('mechanic', mech)}
+                />
+              ))}
+            </FilterSection>
+          )}
+        </div>
+      )}
+
+      {/* Equipment */}
+      {options.equipment.length > 0 && (
+        <FilterSection title="Equipment">
+          {options.equipment.map(eq => (
+            <FilterChip
+              key={eq}
+              label={eq}
+              selected={filters.equipment === eq}
+              onClick={() => handleToggle('equipment', eq)}
+            />
+          ))}
+        </FilterSection>
+      )}
+
+      {/* Muscles */}
+      {options.muscles.length > 0 && (
+        <FilterSection title="Muscle">
+          {options.muscles.map(muscle => (
+            <FilterChip
+              key={muscle}
+              label={muscle}
+              selected={filters.muscle === muscle}
+              onClick={() => handleToggle('muscle', muscle)}
+            />
+          ))}
+        </FilterSection>
+      )}
     </div>
   )
 }
