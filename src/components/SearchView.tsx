@@ -290,35 +290,32 @@ function SearchResultCard({
         {/* Name */}
         <div className="font-medium text-sm line-clamp-2 min-h-[2.5rem]">{exercise.name}</div>
 
-        {/* Category */}
-        <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">
-          {exercise.category}
-        </div>
-
-        {/* Target muscles */}
+        {/* All labels in one row */}
         <div className="flex flex-wrap gap-1">
+          {/* Category */}
+          <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-500/20 text-purple-400">
+            {exercise.category}
+          </span>
+
+          {/* Target muscles */}
           {exercise.targetMuscles.map(muscle => (
             <span key={muscle} className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400">
               {muscle}
             </span>
           ))}
-        </div>
 
-        {/* Secondary muscles */}
-        {exercise.secondaryMuscles.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {exercise.secondaryMuscles.slice(0, 3).map(muscle => (
-              <span key={muscle} className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg)] text-[var(--text-muted)]">
-                {muscle}
-              </span>
-            ))}
-            {exercise.secondaryMuscles.length > 3 && (
-              <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg)] text-[var(--text-muted)]">
-                +{exercise.secondaryMuscles.length - 3}
-              </span>
-            )}
-          </div>
-        )}
+          {/* Secondary muscles */}
+          {exercise.secondaryMuscles.slice(0, 2).map(muscle => (
+            <span key={muscle} className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg)] text-[var(--text-muted)]">
+              {muscle}
+            </span>
+          ))}
+          {exercise.secondaryMuscles.length > 2 && (
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg)] text-[var(--text-muted)]">
+              +{exercise.secondaryMuscles.length - 2}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )
