@@ -218,6 +218,7 @@ function SearchResult({
         <img
           src={exercise.imageUrl}
           alt={exercise.name}
+          loading="lazy"
           className="w-full aspect-square object-cover bg-[var(--border)]"
         />
       ) : (

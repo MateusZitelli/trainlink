@@ -118,10 +118,10 @@ export function ExerciseRow({
           className="flex items-center gap-2 p-3 cursor-pointer"
           onClick={onClick}
         >
-          {/* Selection/Prediction indicator */}
-          <span className={`text-lg ${isPredicted ? 'opacity-100 text-blue-500' : 'opacity-0'}`}>
-            →
-          </span>
+          {/* Prediction indicator */}
+          {isPredicted && (
+            <span className="text-lg text-blue-500">→</span>
+          )}
 
           {/* Exercise image */}
           {exercise?.imageUrl ? (

@@ -217,8 +217,7 @@ export function useExerciseDB() {
         )
       }
 
-      // Limit results
-      setResults(filtered.slice(0, 20))
+      setResults(filtered)
     } catch {
       setError('Search failed')
       setResults([])
