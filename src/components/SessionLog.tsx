@@ -186,7 +186,7 @@ export function SessionLog({
   onDeleteSession,
   onRemoveSet,
 }: SessionLogProps) {
-  const [expandedSessionIdx, setExpandedSessionIdx] = useState<number | null>(null)
+  const [expandedSessionIdx, setExpandedSessionIdx] = useState<number | null>(0)
   const [selectedTs, setSelectedTs] = useState<number | null>(null)
 
   const sessions = useMemo(() => parseSessions(history), [history])
@@ -360,7 +360,7 @@ export function SessionLog({
       {reversedSessions.map((session, idx) => {
         const originalIdx = sessions.length - 1 - idx
         const isActive = session.endTs === null
-        const isExpanded = expandedSessionIdx === originalIdx || (isActive && expandedSessionIdx === null)
+        const isExpanded = expandedSessionIdx === originalIdx
         const isLastCompleted = lastCompletedSession === session
         const totalSets = session.sets.length
         const totalVolume = session.sets.reduce((sum, set) => sum + set.kg * set.reps, 0)
