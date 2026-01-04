@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import type { HistoryEntry } from '../lib/state'
 import { getDefaultRest } from '../lib/state'
+import { useElapsedTimer } from '../hooks/useElapsedTimer'
 
 interface RestTimerProps {
   restStartedAt?: number
@@ -10,8 +11,8 @@ interface RestTimerProps {
 }
 
 export function RestTimer({ restStartedAt, history, currentExId, restTimes }: RestTimerProps) {
-  const [elapsed, setElapsed] = useState(0)
   const hasNotified = useRef(false)
+  const elapsed = useElapsedTimer(restStartedAt ?? null)
 
   const targetRest = currentExId ? getDefaultRest(history, currentExId, restTimes) : 90
   const isComplete = elapsed >= targetRest
@@ -23,27 +24,13 @@ export function RestTimer({ restStartedAt, history, currentExId, restTimes }: Re
     }
   }, [restStartedAt])
 
+  // Notify when rest is complete
   useEffect(() => {
-    if (!restStartedAt) {
-      setElapsed(0)
-      return
+    if (elapsed >= targetRest && !hasNotified.current && restStartedAt) {
+      hasNotified.current = true
+      notifyRestComplete()
     }
-
-    const update = () => {
-      const newElapsed = Math.floor((Date.now() - restStartedAt) / 1000)
-      setElapsed(newElapsed)
-
-      // Notify when rest is complete (only once)
-      if (newElapsed >= targetRest && !hasNotified.current) {
-        hasNotified.current = true
-        notifyRestComplete()
-      }
-    }
-
-    update()
-    const interval = setInterval(update, 1000)
-    return () => clearInterval(interval)
-  }, [restStartedAt, targetRest])
+  }, [elapsed, targetRest, restStartedAt])
 
   if (!restStartedAt) return null
 

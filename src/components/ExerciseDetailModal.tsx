@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import type { Exercise } from '../hooks/useExerciseDB'
+import { useImageRotation } from '../hooks/useImageRotation'
+import { LEVEL_COLORS_STYLED } from '../lib/utils'
 
 interface ExerciseDetailModalProps {
   exercise: Exercise
@@ -18,16 +20,7 @@ export function ExerciseDetailModal({
   activeDay,
   inDay,
 }: ExerciseDetailModalProps) {
-  const [imageIndex, setImageIndex] = useState(0)
-
-  // Animate images
-  useEffect(() => {
-    if (exercise.imageUrls.length <= 1) return
-    const interval = setInterval(() => {
-      setImageIndex(i => (i + 1) % exercise.imageUrls.length)
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [exercise.imageUrls.length])
+  const imageIndex = useImageRotation(exercise.imageUrls)
 
   // Close on escape
   useEffect(() => {
@@ -37,12 +30,6 @@ export function ExerciseDetailModal({
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)
   }, [onClose])
-
-  const levelColors: Record<string, string> = {
-    beginner: 'bg-green-500/20 text-green-400',
-    intermediate: 'bg-yellow-500/20 text-yellow-400',
-    expert: 'bg-red-500/20 text-red-400',
-  }
 
   const categoryIcons: Record<string, string> = {
     strength: '💪',
@@ -105,7 +92,7 @@ export function ExerciseDetailModal({
             <h2 className="text-xl font-bold">{exercise.name}</h2>
             <div className="flex flex-wrap gap-2 mt-2">
               {/* Level badge */}
-              <span className={`px-2 py-0.5 rounded text-xs font-medium ${levelColors[exercise.level] ?? 'bg-[var(--surface)]'}`}>
+              <span className={`px-2 py-0.5 rounded text-xs font-medium ${LEVEL_COLORS_STYLED[exercise.level] ?? 'bg-[var(--surface)]'}`}>
                 {exercise.level}
               </span>
 

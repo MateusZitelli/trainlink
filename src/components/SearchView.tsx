@@ -1,9 +1,11 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import type { Exercise, SearchFilters } from '../hooks/useExerciseDB'
 import { useExerciseDB, debounce } from '../hooks/useExerciseDB'
 import type { Day } from '../lib/state'
 import { FilterPanel } from './FilterPanel'
 import { ExerciseDetailModal } from './ExerciseDetailModal'
+import { useImageRotation } from '../hooks/useImageRotation'
+import { LEVEL_COLORS } from '../lib/utils'
 
 interface SearchViewProps {
   activeDay?: string
@@ -215,21 +217,7 @@ function SearchResultCard({
   onDoNow,
   activeDay,
 }: SearchResultCardProps) {
-  const [imageIndex, setImageIndex] = useState(0)
-
-  useEffect(() => {
-    if (exercise.imageUrls.length <= 1) return
-    const interval = setInterval(() => {
-      setImageIndex(i => (i + 1) % exercise.imageUrls.length)
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [exercise.imageUrls.length])
-
-  const levelColors: Record<string, string> = {
-    beginner: 'bg-green-500',
-    intermediate: 'bg-yellow-500',
-    expert: 'bg-red-500',
-  }
+  const imageIndex = useImageRotation(exercise.imageUrls)
 
   const forceIcons: Record<string, string> = {
     push: '↑',
@@ -273,7 +261,7 @@ function SearchResultCard({
         {/* All labels in one row */}
         <div className="flex flex-wrap gap-1 mt-0.5">
           {/* Level */}
-          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium text-white ${levelColors[exercise.level] ?? 'bg-gray-500'}`}>
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium text-white ${LEVEL_COLORS[exercise.level] ?? 'bg-gray-500'}`}>
             {exercise.level}
           </span>
 

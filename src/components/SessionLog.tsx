@@ -1,17 +1,14 @@
 import { useState, useMemo } from 'react'
-import type { HistoryEntry, SetEntry, Difficulty } from '../lib/state'
+import type { HistoryEntry, SetEntry } from '../lib/state'
 import { isSetEntry, isSessionEndMarker } from '../lib/state'
 import type { Exercise } from '../hooks/useExerciseDB'
-
-// Get border color class for difficulty
-function getDifficultyBorderColor(difficulty?: Difficulty): string {
-  switch (difficulty) {
-    case 'easy': return 'border border-blue-500'
-    case 'hard': return 'border border-orange-500'
-    case 'normal': return 'border border-[var(--success)]'
-    default: return ''
-  }
-}
+import {
+  getDifficultyBorderColor,
+  formatDuration,
+  formatRest,
+  formatSessionDate,
+  formatTimeOfDay,
+} from '../lib/utils'
 
 interface SessionLogProps {
   history: HistoryEntry[]
@@ -158,26 +155,6 @@ function parseSessions(history: HistoryEntry[]): Session[] {
   return sessions
 }
 
-// Format date for session header
-function formatSessionDate(ts: number): string {
-  const date = new Date(ts)
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const yesterday = new Date(today)
-  yesterday.setDate(yesterday.getDate() - 1)
-
-  const entryDate = new Date(ts)
-  entryDate.setHours(0, 0, 0, 0)
-
-  if (entryDate.getTime() === today.getTime()) {
-    return 'Today'
-  } else if (entryDate.getTime() === yesterday.getTime()) {
-    return 'Yesterday'
-  } else {
-    return date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
-  }
-}
-
 export function SessionLog({
   history,
   getExercise,
@@ -197,28 +174,6 @@ export function SessionLog({
   const reversedSessions = [...sessions].reverse()
 
   const lastCompletedSession = sessions.filter(s => s.endTs !== null).pop()
-
-  const formatTime = (ts: number) => {
-    const date = new Date(ts)
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
-
-  const formatDuration = (startTs: number, endTs: number | null) => {
-    const end = endTs ?? Date.now()
-    const seconds = Math.floor((end - startTs) / 1000)
-    const mins = Math.floor(seconds / 60)
-    const hrs = Math.floor(mins / 60)
-    if (hrs > 0) {
-      return `${hrs}h ${mins % 60}m`
-    }
-    return `${mins}m`
-  }
-
-  const formatRest = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`
-  }
 
   const renderSessionContent = (session: Session) => {
     const circuits = detectCircuits(session.sets)
@@ -379,7 +334,7 @@ export function SessionLog({
                   <div className="font-medium flex items-center gap-2">
                     <span>{formatSessionDate(session.startTs)}</span>
                     <span className="text-[var(--text-muted)]">·</span>
-                    <span className="text-sm text-[var(--text-muted)]">{formatTime(session.startTs)}</span>
+                    <span className="text-sm text-[var(--text-muted)]">{formatTimeOfDay(session.startTs)}</span>
                     {isActive && (
                       <span className="text-xs bg-[var(--success)] text-white px-1.5 py-0.5 rounded">Active</span>
                     )}
