@@ -122,8 +122,15 @@ export function ExerciseList({
     const currentSets = getCurrentSessionSets(history)
     const doneExIds = new Set(currentSets.map(s => s.exId))
     const plannedExIds = new Set(day.exercises)
-    return Array.from(doneExIds).filter(exId => !plannedExIds.has(exId))
-  }, [history, day.exercises])
+    const unplanned = Array.from(doneExIds).filter(exId => !plannedExIds.has(exId))
+
+    // If there's a selected exercise that's not in the plan and not already in unplanned, add it
+    if (currentExId && !plannedExIds.has(currentExId) && !unplanned.includes(currentExId)) {
+      unplanned.unshift(currentExId) // Add at the beginning
+    }
+
+    return unplanned
+  }, [history, day.exercises, currentExId])
 
   // Create unique IDs for sortable (handle duplicate exercises)
   const sortableItems = day.exercises.map((exId, index) => ({
@@ -199,11 +206,11 @@ export function ExerciseList({
         + Add exercise
       </button>
 
-      {/* Unplanned exercises done in this session */}
+      {/* Unplanned exercises (done or currently selected) */}
       {unplannedExercises.length > 0 && (
         <>
           <h2 className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-3 mt-6">
-            Also done today
+            Other exercises
           </h2>
 
           {unplannedExercises.map((exId) => {
