@@ -257,12 +257,12 @@ function SearchResultCard({
       </div>
 
       {/* Content */}
-      <div className="p-2 space-y-1.5">
+      <div className="p-2">
         {/* Name */}
-        <div className="font-medium text-sm line-clamp-2 min-h-[2.5rem]">{exercise.name}</div>
+        <div className="font-medium text-sm line-clamp-2">{exercise.name}</div>
 
         {/* All labels in one row */}
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1 mt-0.5">
           {/* Level */}
           <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium text-white ${levelColors[exercise.level] ?? 'bg-gray-500'}`}>
             {exercise.level}
