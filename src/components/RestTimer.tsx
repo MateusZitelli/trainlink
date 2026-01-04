@@ -71,27 +71,45 @@ export function RestTimer({ restStartedAt, history, currentExId, restTimes }: Re
 }
 
 function notifyRestComplete() {
-  // Vibrate if supported
+  // Vibrate if supported - boxing bell pattern
   if ('vibrate' in navigator) {
-    navigator.vibrate([200, 100, 200])
+    navigator.vibrate([100, 80, 100, 80, 100])
   }
 
-  // Play notification sound
+  // Play boxing bell sound (3 rings)
   try {
     const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
-    const oscillator = audioContext.createOscillator()
-    const gainNode = audioContext.createGain()
 
-    oscillator.connect(gainNode)
-    gainNode.connect(audioContext.destination)
+    const playBellRing = (startTime: number) => {
+      // Create multiple oscillators for metallic bell harmonics
+      const frequencies = [800, 1200, 1600, 2000] // Bell harmonics
+      const gains = [0.4, 0.25, 0.15, 0.1] // Decreasing volume for higher harmonics
 
-    oscillator.frequency.value = 880 // A5 note
-    oscillator.type = 'sine'
-    gainNode.gain.value = 0.3
+      frequencies.forEach((freq, i) => {
+        const osc = audioContext.createOscillator()
+        const gain = audioContext.createGain()
 
-    oscillator.start()
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3)
-    oscillator.stop(audioContext.currentTime + 0.3)
+        osc.connect(gain)
+        gain.connect(audioContext.destination)
+
+        osc.frequency.value = freq
+        osc.type = 'sine'
+
+        // Quick attack, medium decay (bell-like)
+        gain.gain.setValueAtTime(gains[i], startTime)
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.4)
+
+        osc.start(startTime)
+        osc.stop(startTime + 0.4)
+      })
+    }
+
+    // Three bell rings like boxing round bell
+    const now = audioContext.currentTime
+    playBellRing(now)
+    playBellRing(now + 0.25)
+    playBellRing(now + 0.5)
+
   } catch {
     // Audio not supported
   }
