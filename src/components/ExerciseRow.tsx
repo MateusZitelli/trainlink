@@ -44,6 +44,7 @@ export function ExerciseRow({
   const [setStartedAt, setSetStartedAt] = useState<number | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const [imageIndex, setImageIndex] = useState(0)
+  const [showFullImage, setShowFullImage] = useState(false)
 
   // Reset form when exercise changes
   useEffect(() => {
@@ -52,6 +53,7 @@ export function ExerciseRow({
     setSetStartedAt(null)
     setElapsed(0)
     setImageIndex(0)
+    setShowFullImage(false)
   }, [exerciseId, lastSet])
 
   // Animate through images
@@ -140,10 +142,10 @@ export function ExerciseRow({
             <img
               src={imageUrls[imageIndex]}
               alt={name}
-              className="w-10 h-10 rounded-lg object-cover bg-[var(--surface)]"
+              className="w-16 h-16 rounded-lg object-cover bg-[var(--surface)]"
             />
           ) : (
-            <div className="w-10 h-10 rounded-lg bg-[var(--surface)] flex items-center justify-center text-[var(--text-muted)] text-xs">
+            <div className="w-16 h-16 rounded-lg bg-[var(--surface)] flex items-center justify-center text-[var(--text-muted)] text-sm">
               ?
             </div>
           )}
@@ -226,17 +228,35 @@ export function ExerciseRow({
   // Expanded view
   return (
     <div className="bg-[var(--surface)] rounded-lg p-4 space-y-4">
+      {/* Full screen image modal */}
+      {showFullImage && imageUrls.length > 0 && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+          onClick={() => setShowFullImage(false)}
+        >
+          <img
+            src={imageUrls[imageIndex]}
+            alt={name}
+            className="max-w-full max-h-full object-contain"
+          />
+        </div>
+      )}
+
       {/* Header - clickable to collapse */}
       <div className="flex gap-4 cursor-pointer" onClick={onClick}>
-        {/* Large image */}
+        {/* Large image - clickable to expand */}
         {imageUrls.length > 0 ? (
           <img
             src={imageUrls[imageIndex]}
             alt={name}
-            className="w-20 h-20 rounded-lg object-cover bg-[var(--bg)]"
+            className="w-28 h-28 rounded-lg object-cover bg-[var(--bg)] cursor-zoom-in"
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowFullImage(true)
+            }}
           />
         ) : (
-          <div className="w-20 h-20 rounded-lg bg-[var(--bg)] flex items-center justify-center text-[var(--text-muted)]">
+          <div className="w-28 h-28 rounded-lg bg-[var(--bg)] flex items-center justify-center text-[var(--text-muted)] text-xl">
             ?
           </div>
         )}
