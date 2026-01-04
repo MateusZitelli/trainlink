@@ -81,31 +81,20 @@ function SortableExercise({
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-2">
-      {/* Drag handle */}
-      <div
-        className="text-[var(--text-muted)] opacity-40 text-sm cursor-grab active:cursor-grabbing touch-none select-none"
-        {...attributes}
-        {...listeners}
-      >
-        ⋮⋮
-      </div>
-
-      <div className="flex-1">
-        <ExerciseRow
-          exercise={exercise}
-          exerciseId={exId}
-          lastSet={lastSet}
-          todaySets={todaySets}
-          isSelected={isSelected}
-          isPredicted={isPredicted}
-          restTime={getDefaultRest(history, exId, restTimes)}
-          onClick={() => onSelectExercise(isSelected ? undefined : exId)}
-          onRemove={() => onRemoveExercise(exId)}
-          onLogSet={(kg, reps) => onLogSet({ exId, kg, reps })}
-          onSetRestTime={(seconds) => onSetRestTime(exId, seconds)}
-        />
-      </div>
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <ExerciseRow
+        exercise={exercise}
+        exerciseId={exId}
+        lastSet={lastSet}
+        todaySets={todaySets}
+        isSelected={isSelected}
+        isPredicted={isPredicted}
+        restTime={getDefaultRest(history, exId, restTimes)}
+        onClick={() => onSelectExercise(isSelected ? undefined : exId)}
+        onRemove={() => onRemoveExercise(exId)}
+        onLogSet={(kg, reps) => onLogSet({ exId, kg, reps })}
+        onSetRestTime={(seconds) => onSetRestTime(exId, seconds)}
+      />
     </div>
   )
 }
@@ -224,28 +213,20 @@ export function ExerciseList({
             const isSelected = currentExId === exId
 
             return (
-              <div key={exId}>
-                <div className="flex items-center gap-2">
-                  {/* Spacer to align with planned exercises */}
-                  <div className="w-4" />
-
-                  <div className="flex-1">
-                    <ExerciseRow
-                      exercise={exercise}
-                      exerciseId={exId}
-                      lastSet={lastSet}
-                      todaySets={todaySets}
-                      isSelected={isSelected}
-                      isPredicted={prediction?.exId === exId}
-                      restTime={getDefaultRest(history, exId, restTimes)}
-                      onClick={() => onSelectExercise(isSelected ? undefined : exId)}
-                      onAddToPlan={() => onAddExerciseToDay(exId)}
-                      onLogSet={(kg, reps) => onLogSet({ exId, kg, reps })}
-                      onSetRestTime={(seconds) => onSetRestTime(exId, seconds)}
-                    />
-                  </div>
-                </div>
-              </div>
+              <ExerciseRow
+                key={exId}
+                exercise={exercise}
+                exerciseId={exId}
+                lastSet={lastSet}
+                todaySets={todaySets}
+                isSelected={isSelected}
+                isPredicted={prediction?.exId === exId}
+                restTime={getDefaultRest(history, exId, restTimes)}
+                onClick={() => onSelectExercise(isSelected ? undefined : exId)}
+                onAddToPlan={() => onAddExerciseToDay(exId)}
+                onLogSet={(kg, reps) => onLogSet({ exId, kg, reps })}
+                onSetRestTime={(seconds) => onSetRestTime(exId, seconds)}
+              />
             )
           })}
         </>
