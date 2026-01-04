@@ -93,9 +93,9 @@ export function DayTabs({
 
   return (
     <div className="border-b border-[var(--border)] bg-[var(--bg)]">
-      <div className="flex items-center gap-2 px-3 py-2 overflow-x-auto">
+      <div className="flex items-center gap-1 px-4 py-2 overflow-x-auto">
         {days.map((day) => (
-          <div key={day.name} className="relative flex-shrink-0">
+          <div key={day.name} className="relative">
             {editingDay === day.name ? (
               <input
                 ref={inputRef}
@@ -109,7 +109,7 @@ export function DayTabs({
                     setEditValue('')
                   }
                 }}
-                className="px-2 py-1 text-sm bg-[var(--surface)] border border-[var(--border)] rounded w-20"
+                className="px-3 py-2 text-sm font-medium bg-[var(--surface)] border border-[var(--border)] rounded w-24"
               />
             ) : (
               <button
@@ -134,35 +134,13 @@ export function DayTabs({
                 onTouchStart={() => handleTouchStart(day.name)}
                 onTouchEnd={handleTouchEnd}
                 onTouchMove={handleTouchEnd}
-                className={`px-2 py-1 text-sm rounded transition-all flex items-center gap-1 ${
+                className={`px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
                   activeDay === day.name
-                    ? isDayCollapsed
-                      ? 'bg-[var(--surface)] text-[var(--text)] border border-[var(--border)]'
-                      : 'bg-[var(--surface)] text-[var(--text)] border-2 border-[var(--text)]'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                    ? 'text-[var(--text)] border-b-2 border-[var(--text)]'
+                    : 'text-[var(--text-muted)]'
                 }`}
               >
                 {day.name}
-                {activeDay === day.name && (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="opacity-60"
-                  >
-                    {isDayCollapsed ? (
-                      <polyline points="18 15 12 9 6 15" />
-                    ) : (
-                      <polyline points="6 9 12 15 18 9" />
-                    )}
-                  </svg>
-                )}
               </button>
             )}
           </div>
@@ -171,27 +149,27 @@ export function DayTabs({
         {/* Add Day Button */}
         <button
           onClick={handleAddDay}
-          className="flex-shrink-0 px-2 py-1 text-sm text-[var(--text-muted)] hover:text-[var(--text)]"
+          className="px-3 py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text)]"
         >
           +
         </button>
 
         {/* Spacer */}
-        <div className="flex-1 min-w-[8px]" />
+        <div className="flex-1" />
 
         {/* Search Toggle */}
         <button
           onClick={onToggleSearch}
-          className={`flex-shrink-0 px-2 py-1 text-sm rounded transition-all ${
+          className={`px-3 py-2 text-sm font-medium ${
             showSearch
-              ? 'bg-[var(--surface)] text-[var(--text)] border-2 border-[var(--text)]'
-              : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+              ? 'text-[var(--text)] border-b-2 border-[var(--text)]'
+              : 'text-[var(--text-muted)]'
           }`}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -203,6 +181,45 @@ export function DayTabs({
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
         </button>
+
+        {/* Collapse/Expand Toggle - only show when there's an active day */}
+        {activeDay && !showSearch && (
+          <button
+            onClick={onToggleCollapse}
+            className="px-3 py-2 text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text)]"
+            aria-label={isDayCollapsed ? 'Expand day view' : 'Collapse day view'}
+          >
+            {isDayCollapsed ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="18 15 12 9 6 15" />
+              </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Context Menu - Fixed position */}
