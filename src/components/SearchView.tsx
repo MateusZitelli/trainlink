@@ -217,9 +217,15 @@ function SearchResultCard({
   }, [exercise.imageUrls.length])
 
   const levelColors: Record<string, string> = {
-    beginner: 'bg-green-500/80',
-    intermediate: 'bg-yellow-500/80',
-    expert: 'bg-red-500/80',
+    beginner: 'bg-green-500',
+    intermediate: 'bg-yellow-500',
+    expert: 'bg-red-500',
+  }
+
+  const forceIcons: Record<string, string> = {
+    push: '↑',
+    pull: '↓',
+    static: '•',
   }
 
   return (
@@ -242,49 +248,77 @@ function SearchResultCard({
           </div>
         )}
 
-        {/* Level badge */}
-        <span className={`absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-bold text-white ${levelColors[exercise.level] ?? 'bg-gray-500'}`}>
-          {exercise.level.charAt(0).toUpperCase()}
-        </span>
-
-        {/* In day badge */}
-        {inDay && (
-          <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--success)] text-white">
-            {inDay}
-          </span>
-        )}
-
-        {/* Bottom gradient with info */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 pt-8">
-          <div className="flex items-center gap-1 text-[10px] text-white/80">
-            {exercise.equipment && (
-              <span className="truncate">{exercise.equipment}</span>
+        {/* Top badges row */}
+        <div className="absolute top-2 left-2 right-2 flex items-start justify-between gap-1">
+          <div className="flex flex-wrap gap-1">
+            {/* Level */}
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold text-white ${levelColors[exercise.level] ?? 'bg-gray-500'}`}>
+              {exercise.level}
+            </span>
+            {/* Mechanic */}
+            {exercise.mechanic && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-black/60 text-white">
+                {exercise.mechanic}
+              </span>
             )}
-            {exercise.force && (
-              <>
-                <span>·</span>
-                <span>{exercise.force}</span>
-              </>
-            )}
+          </div>
+          {/* In day badge */}
+          {inDay && (
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--success)] text-white shrink-0">
+              {inDay}
+            </span>
+          )}
+        </div>
+
+        {/* Bottom gradient with equipment & category */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2 pt-10">
+          <div className="flex items-center justify-between gap-1 text-[10px] text-white">
+            <span className="truncate font-medium">{exercise.equipment ?? 'no equipment'}</span>
+            <div className="flex items-center gap-1 shrink-0">
+              {exercise.force && (
+                <span className="px-1.5 py-0.5 rounded bg-white/20">
+                  {forceIcons[exercise.force] ?? ''} {exercise.force}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="p-2">
-        <div className="font-medium text-sm line-clamp-1">{exercise.name}</div>
-        <div className="flex flex-wrap gap-1 mt-1">
-          {exercise.targetMuscles.slice(0, 2).map(muscle => (
+      <div className="p-2 space-y-1.5">
+        {/* Name */}
+        <div className="font-medium text-sm line-clamp-2 min-h-[2.5rem]">{exercise.name}</div>
+
+        {/* Category */}
+        <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">
+          {exercise.category}
+        </div>
+
+        {/* Target muscles */}
+        <div className="flex flex-wrap gap-1">
+          {exercise.targetMuscles.map(muscle => (
             <span key={muscle} className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400">
               {muscle}
             </span>
           ))}
-          {exercise.targetMuscles.length > 2 && (
-            <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg)] text-[var(--text-muted)]">
-              +{exercise.targetMuscles.length - 2}
-            </span>
-          )}
         </div>
+
+        {/* Secondary muscles */}
+        {exercise.secondaryMuscles.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {exercise.secondaryMuscles.slice(0, 3).map(muscle => (
+              <span key={muscle} className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg)] text-[var(--text-muted)]">
+                {muscle}
+              </span>
+            ))}
+            {exercise.secondaryMuscles.length > 3 && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg)] text-[var(--text-muted)]">
+                +{exercise.secondaryMuscles.length - 3}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
