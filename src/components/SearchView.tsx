@@ -233,7 +233,7 @@ function SearchResultCard({
       onClick={onClick}
       className="bg-[var(--surface)] rounded-lg overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
     >
-      {/* Image with overlays */}
+      {/* Image */}
       <div className="relative aspect-square">
         {exercise.imageUrls.length > 0 ? (
           <img
@@ -248,41 +248,12 @@ function SearchResultCard({
           </div>
         )}
 
-        {/* Top badges row */}
-        <div className="absolute top-2 left-2 right-2 flex items-start justify-between gap-1">
-          <div className="flex flex-wrap gap-1">
-            {/* Level */}
-            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold text-white ${levelColors[exercise.level] ?? 'bg-gray-500'}`}>
-              {exercise.level}
-            </span>
-            {/* Mechanic */}
-            {exercise.mechanic && (
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-black/60 text-white">
-                {exercise.mechanic}
-              </span>
-            )}
-          </div>
-          {/* In day badge */}
-          {inDay && (
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--success)] text-white shrink-0">
-              {inDay}
-            </span>
-          )}
-        </div>
-
-        {/* Bottom gradient with equipment & category */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2 pt-10">
-          <div className="flex items-center justify-between gap-1 text-[10px] text-white">
-            <span className="truncate font-medium">{exercise.equipment ?? 'no equipment'}</span>
-            <div className="flex items-center gap-1 shrink-0">
-              {exercise.force && (
-                <span className="px-1.5 py-0.5 rounded bg-white/20">
-                  {forceIcons[exercise.force] ?? ''} {exercise.force}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+        {/* In day badge */}
+        {inDay && (
+          <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--success)] text-white">
+            {inDay}
+          </span>
+        )}
       </div>
 
       {/* Content */}
@@ -292,10 +263,36 @@ function SearchResultCard({
 
         {/* All labels in one row */}
         <div className="flex flex-wrap gap-1">
+          {/* Level */}
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium text-white ${levelColors[exercise.level] ?? 'bg-gray-500'}`}>
+            {exercise.level}
+          </span>
+
           {/* Category */}
           <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-500/20 text-purple-400">
             {exercise.category}
           </span>
+
+          {/* Equipment */}
+          {exercise.equipment && (
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-orange-500/20 text-orange-400">
+              {exercise.equipment}
+            </span>
+          )}
+
+          {/* Force */}
+          {exercise.force && (
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-cyan-500/20 text-cyan-400">
+              {forceIcons[exercise.force]} {exercise.force}
+            </span>
+          )}
+
+          {/* Mechanic */}
+          {exercise.mechanic && (
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-pink-500/20 text-pink-400">
+              {exercise.mechanic}
+            </span>
+          )}
 
           {/* Target muscles */}
           {exercise.targetMuscles.map(muscle => (
@@ -306,7 +303,7 @@ function SearchResultCard({
 
           {/* Secondary muscles */}
           {exercise.secondaryMuscles.slice(0, 2).map(muscle => (
-            <span key={muscle} className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg)] text-[var(--text-muted)]">
+            <span key={`sec-${muscle}`} className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg)] text-[var(--text-muted)]">
               {muscle}
             </span>
           ))}
