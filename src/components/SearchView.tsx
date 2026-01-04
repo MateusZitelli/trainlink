@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import type { Exercise } from '../hooks/useExerciseDB'
 import { useExerciseDB, debounce } from '../hooks/useExerciseDB'
 import type { Day } from '../lib/state'
@@ -206,6 +206,17 @@ function SearchResult({
   onAdd,
   onDoNow,
 }: SearchResultProps) {
+  const [imageIndex, setImageIndex] = useState(0)
+  const imageUrls = exercise.imageUrls ?? []
+
+  useEffect(() => {
+    if (imageUrls.length <= 1) return
+    const interval = setInterval(() => {
+      setImageIndex(i => (i + 1) % imageUrls.length)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [imageUrls.length])
+
   const meta = [
     exercise.targetMuscles?.[0],
     exercise.equipments?.[0],
@@ -214,9 +225,9 @@ function SearchResult({
   return (
     <div className="bg-[var(--surface)] rounded-lg overflow-hidden">
       {/* Exercise image - large */}
-      {exercise.imageUrl ? (
+      {imageUrls.length > 0 ? (
         <img
-          src={exercise.imageUrl}
+          src={imageUrls[imageIndex]}
           alt={exercise.name}
           loading="lazy"
           className="w-full aspect-square object-cover bg-[var(--border)]"

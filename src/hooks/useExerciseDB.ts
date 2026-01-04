@@ -2,8 +2,8 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 
 const EXERCISES_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json'
 const IMAGE_BASE_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'
-const CACHE_KEY = 'workout-exercise-cache-v2'
-const DB_CACHE_KEY = 'workout-free-exercise-db'
+const CACHE_KEY = 'workout-exercise-cache-v3'
+const DB_CACHE_KEY = 'workout-free-exercise-db-v2'
 
 export interface Exercise {
   exerciseId: string
@@ -13,7 +13,7 @@ export interface Exercise {
   exerciseType: string
   targetMuscles: string[]
   secondaryMuscles: string[]
-  imageUrl?: string
+  imageUrls: string[]
   instructions?: string[]
   level?: string
   force?: string
@@ -51,7 +51,7 @@ function mapExercise(raw: RawExercise): Exercise {
     exerciseType: raw.category,
     targetMuscles: raw.primaryMuscles,
     secondaryMuscles: raw.secondaryMuscles,
-    imageUrl: raw.images[0] ? `${IMAGE_BASE_URL}${raw.images[0]}` : undefined,
+    imageUrls: raw.images.map(img => `${IMAGE_BASE_URL}${img}`),
     instructions: raw.instructions,
     level: raw.level,
     force: raw.force ?? undefined,

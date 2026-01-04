@@ -6,7 +6,7 @@ interface Exercise {
   name: string
   targetMuscles?: string[]
   equipments?: string[]
-  imageUrl?: string
+  imageUrls?: string[]
 }
 
 interface ExerciseRowProps {
@@ -43,6 +43,7 @@ export function ExerciseRow({
   const [reps, setReps] = useState(lastSet?.reps?.toString() ?? '')
   const [setStartedAt, setSetStartedAt] = useState<number | null>(null)
   const [elapsed, setElapsed] = useState(0)
+  const [imageIndex, setImageIndex] = useState(0)
 
   // Reset form when exercise changes
   useEffect(() => {
@@ -50,7 +51,18 @@ export function ExerciseRow({
     setReps(lastSet?.reps?.toString() ?? '')
     setSetStartedAt(null)
     setElapsed(0)
+    setImageIndex(0)
   }, [exerciseId, lastSet])
+
+  // Animate through images
+  const imageUrls = exercise?.imageUrls ?? []
+  useEffect(() => {
+    if (imageUrls.length <= 1) return
+    const interval = setInterval(() => {
+      setImageIndex(i => (i + 1) % imageUrls.length)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [imageUrls.length])
 
   // Timer for active set
   useEffect(() => {
@@ -124,9 +136,9 @@ export function ExerciseRow({
           )}
 
           {/* Exercise image */}
-          {exercise?.imageUrl ? (
+          {imageUrls.length > 0 ? (
             <img
-              src={exercise.imageUrl}
+              src={imageUrls[imageIndex]}
               alt={name}
               className="w-10 h-10 rounded-lg object-cover bg-[var(--surface)]"
             />
@@ -217,9 +229,9 @@ export function ExerciseRow({
       {/* Header - clickable to collapse */}
       <div className="flex gap-4 cursor-pointer" onClick={onClick}>
         {/* Large image */}
-        {exercise?.imageUrl ? (
+        {imageUrls.length > 0 ? (
           <img
-            src={exercise.imageUrl}
+            src={imageUrls[imageIndex]}
             alt={name}
             className="w-20 h-20 rounded-lg object-cover bg-[var(--bg)]"
           />
