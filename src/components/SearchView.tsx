@@ -153,6 +153,9 @@ export function SearchView({
                   exercise={exercise}
                   inDay={getExerciseDay(exercise.exerciseId)}
                   onClick={() => setSelectedExercise(exercise)}
+                  activeDay={activeDay}
+                  onAddToDay={activeDay ? (exId) => onAddToDay(activeDay, exId) : undefined}
+                  onDoNow={onDoNow}
                 />
               ))}
             </div>
@@ -199,12 +202,18 @@ interface SearchResultCardProps {
   exercise: Exercise
   inDay: string | null
   onClick: () => void
+  onAddToDay?: (exerciseId: string) => void
+  onDoNow: (exerciseId: string) => void
+  activeDay?: string
 }
 
 function SearchResultCard({
   exercise,
   inDay,
   onClick,
+  onAddToDay,
+  onDoNow,
+  activeDay,
 }: SearchResultCardProps) {
   const [imageIndex, setImageIndex] = useState(0)
 
@@ -312,6 +321,30 @@ function SearchResultCard({
               +{exercise.secondaryMuscles.length - 2}
             </span>
           )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-1 mt-2">
+          {activeDay && !inDay && onAddToDay && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onAddToDay(exercise.exerciseId)
+              }}
+              className="flex-1 px-2 py-1.5 text-[11px] font-medium bg-blue-500 text-white rounded hover:bg-blue-600 active:scale-95 transition-transform"
+            >
+              + Add
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onDoNow(exercise.exerciseId)
+            }}
+            className="flex-1 px-2 py-1.5 text-[11px] font-medium bg-green-500 text-white rounded hover:bg-green-600 active:scale-95 transition-transform"
+          >
+            ▶ Do Now
+          </button>
         </div>
       </div>
     </div>

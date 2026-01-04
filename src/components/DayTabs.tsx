@@ -128,7 +128,7 @@ export function DayTabs({
                 onTouchEnd={handleTouchEnd}
                 onTouchMove={handleTouchEnd}
                 className={`px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                  activeDay === day.name && !showSearch
+                  activeDay === day.name
                     ? 'text-[var(--text)] border-b-2 border-[var(--text)]'
                     : 'text-[var(--text-muted)]'
                 }`}
