@@ -13,6 +13,7 @@ import './index.css'
 function App() {
   const { state, actions } = useAppState()
   const [showSearch, setShowSearch] = useState(false)
+  const [isDayCollapsed, setIsDayCollapsed] = useState(false)
   const { getExercise, fetchExercises } = useExerciseDB()
 
   const activeDay = state.plan.days.find(d => d.name === state.session?.activeDay)
@@ -55,6 +56,8 @@ function App() {
         onMoveDay={actions.moveDay}
         showSearch={showSearch}
         onToggleSearch={() => setShowSearch(!showSearch)}
+        isDayCollapsed={isDayCollapsed}
+        onToggleCollapse={() => setIsDayCollapsed(!isDayCollapsed)}
       />
 
       {/* Main Content */}
@@ -74,6 +77,11 @@ function App() {
 
           // If there's an active day, show ExerciseList (handles both planned and unplanned exercises)
           if (activeDay) {
+            // Show collapsed view if requested
+            if (isDayCollapsed) {
+              return <div className="pt-4 pb-32" />
+            }
+
             return (
               <div className="pt-4 pb-32">
                 <ExerciseList

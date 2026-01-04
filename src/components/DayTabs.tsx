@@ -11,6 +11,8 @@ interface DayTabsProps {
   onMoveDay: (fromIndex: number, toIndex: number) => void
   showSearch: boolean
   onToggleSearch: () => void
+  isDayCollapsed: boolean
+  onToggleCollapse: () => void
 }
 
 export function DayTabs({
@@ -23,6 +25,8 @@ export function DayTabs({
   onMoveDay,
   showSearch,
   onToggleSearch,
+  isDayCollapsed,
+  onToggleCollapse,
 }: DayTabsProps) {
   const [contextMenu, setContextMenu] = useState<{ name: string; x: number; y: number } | null>(null)
   const [editingDay, setEditingDay] = useState<string | null>(null)
@@ -174,6 +178,45 @@ export function DayTabs({
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
         </button>
+
+        {/* Collapse/Expand Toggle - only show when there's an active day */}
+        {activeDay && !showSearch && (
+          <button
+            onClick={onToggleCollapse}
+            className="px-3 py-2 text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text)]"
+            aria-label={isDayCollapsed ? 'Expand day view' : 'Collapse day view'}
+          >
+            {isDayCollapsed ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="18 15 12 9 6 15" />
+              </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Context Menu - Fixed position */}
