@@ -1,6 +1,5 @@
 import type { Day } from '../lib/state'
-import { useState, useRef } from 'react'
-import { useDragReorder } from '../hooks/useDragReorder'
+import { useState, useRef, useEffect } from 'react'
 
 interface DayTabsProps {
   days: Day[]
@@ -26,16 +25,17 @@ export function DayTabs({
   onToggleSearch,
 }: DayTabsProps) {
   const [contextMenu, setContextMenu] = useState<string | null>(null)
-  const { draggedIndex, dropTargetIndex, getDragProps, getTouchProps, handleTouchEnd } = useDragReorder(onMoveDay)
-  const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+  const [editingDay, setEditingDay] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const handleItemTouchEnd = (e: React.TouchEvent) => {
-    const items = Array.from(itemRefs.current.entries()).map(([index, element]) => ({
-      index,
-      element,
-    }))
-    handleTouchEnd(items, e)
-  }
+  useEffect(() => {
+    if (editingDay && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [editingDay])
 
   const handleAddDay = () => {
     const name = prompt('Day name:')
@@ -44,12 +44,18 @@ export function DayTabs({
     }
   }
 
-  const handleRename = (name: string) => {
-    const newName = prompt('New name:', name)
-    if (newName?.trim() && newName !== name) {
-      onRenameDay(name, newName.trim())
-    }
+  const handleStartRename = (name: string) => {
+    setEditingDay(name)
+    setEditValue(name)
     setContextMenu(null)
+  }
+
+  const handleFinishRename = () => {
+    if (editingDay && editValue.trim() && editValue !== editingDay) {
+      onRenameDay(editingDay, editValue.trim())
+    }
+    setEditingDay(null)
+    setEditValue('')
   }
 
   const handleDelete = (name: string) => {
@@ -59,29 +65,40 @@ export function DayTabs({
     setContextMenu(null)
   }
 
-  const handleLongPress = (name: string) => {
-    setContextMenu(contextMenu === name ? null : name)
+  const handleTouchStart = (name: string) => {
+    longPressTimer.current = setTimeout(() => {
+      setContextMenu(contextMenu === name ? null : name)
+    }, 500)
+  }
+
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
   }
 
   return (
     <div className="border-b border-[var(--border)] bg-[var(--bg)]">
       <div className="flex items-center gap-1 px-4 py-2 overflow-x-auto">
-        {days.map((day, index) => {
-          const isDragged = draggedIndex === index
-          const isDropTarget = dropTargetIndex === index
-
-          return (
-            <div
-              key={day.name}
-              className={`relative ${isDragged ? 'opacity-50' : ''} ${isDropTarget ? 'border-l-2 border-[var(--text)]' : ''}`}
-              ref={(el) => {
-                if (el) itemRefs.current.set(index, el)
-                else itemRefs.current.delete(index)
-              }}
-              {...getDragProps(index)}
-              {...getTouchProps(index)}
-              onTouchEnd={handleItemTouchEnd}
-            >
+        {days.map((day, index) => (
+          <div key={day.name} className="relative">
+            {editingDay === day.name ? (
+              <input
+                ref={inputRef}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={handleFinishRename}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleFinishRename()
+                  if (e.key === 'Escape') {
+                    setEditingDay(null)
+                    setEditValue('')
+                  }
+                }}
+                className="px-3 py-2 text-sm font-medium bg-[var(--surface)] border border-[var(--border)] rounded w-24"
+              />
+            ) : (
               <button
                 onClick={() => {
                   if (contextMenu) {
@@ -92,8 +109,11 @@ export function DayTabs({
                 }}
                 onContextMenu={(e) => {
                   e.preventDefault()
-                  handleLongPress(day.name)
+                  setContextMenu(contextMenu === day.name ? null : day.name)
                 }}
+                onTouchStart={() => handleTouchStart(day.name)}
+                onTouchEnd={handleTouchEnd}
+                onTouchMove={handleTouchEnd}
                 className={`px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
                   activeDay === day.name && !showSearch
                     ? 'text-[var(--text)] border-b-2 border-[var(--text)]'
@@ -102,49 +122,49 @@ export function DayTabs({
               >
                 {day.name}
               </button>
+            )}
 
-              {/* Context Menu */}
-              {contextMenu === day.name && (
-                <div className="absolute top-full left-0 mt-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-lg z-10 min-w-[120px]">
-                  {index > 0 && (
-                    <button
-                      onClick={() => {
-                        onMoveDay(index, index - 1)
-                        setContextMenu(null)
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm hover:bg-[var(--border)]"
-                    >
-                      ← Move Left
-                    </button>
-                  )}
-                  {index < days.length - 1 && (
-                    <button
-                      onClick={() => {
-                        onMoveDay(index, index + 1)
-                        setContextMenu(null)
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm hover:bg-[var(--border)]"
-                    >
-                      Move Right →
-                    </button>
-                  )}
+            {/* Context Menu */}
+            {contextMenu === day.name && (
+              <div className="absolute top-full left-0 mt-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-lg z-20 min-w-[120px]">
+                {index > 0 && (
                   <button
-                    onClick={() => handleRename(day.name)}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-[var(--border)]"
+                    onClick={() => {
+                      onMoveDay(index, index - 1)
+                      setContextMenu(null)
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-[var(--bg)]"
                   >
-                    Rename
+                    ← Move Left
                   </button>
+                )}
+                {index < days.length - 1 && (
                   <button
-                    onClick={() => handleDelete(day.name)}
-                    className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-[var(--border)]"
+                    onClick={() => {
+                      onMoveDay(index, index + 1)
+                      setContextMenu(null)
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-[var(--bg)]"
                   >
-                    Delete
+                    Move Right →
                   </button>
-                </div>
-              )}
-            </div>
-          )
-        })}
+                )}
+                <button
+                  onClick={() => handleStartRename(day.name)}
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-[var(--bg)]"
+                >
+                  Rename
+                </button>
+                <button
+                  onClick={() => handleDelete(day.name)}
+                  className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-[var(--bg)]"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
 
         {/* Add Day Button */}
         <button
@@ -186,7 +206,7 @@ export function DayTabs({
       {/* Click outside to close context menu */}
       {contextMenu && (
         <div
-          className="fixed inset-0 z-0"
+          className="fixed inset-0 z-10"
           onClick={() => setContextMenu(null)}
         />
       )}
