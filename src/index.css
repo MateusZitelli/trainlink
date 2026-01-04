@@ -1,0 +1,43 @@
+@import 'tailwindcss';
+
+:root {
+  --bg: #FFFFFF;
+  --surface: #F5F5F5;
+  --border: #E5E5E5;
+  --text: #0A0A0A;
+  --text-muted: #6B6B6B;
+  --success: #22C55E;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0A0A0A;
+    --surface: #1A1A1A;
+    --border: #2A2A2A;
+    --text: #FAFAFA;
+    --text-muted: #8B8B8B;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Prevent iOS zoom on input focus */
+input, select, textarea {
+  font-size: 18px;
+}
