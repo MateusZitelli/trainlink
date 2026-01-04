@@ -24,7 +24,7 @@ export function urlToState(hash: string): AppState | null {
 }
 
 // Save to localStorage as backup for PWA
-function saveToStorage(state: AppState): void {
+export function saveToStorage(state: AppState): void {
   try {
     const json = JSON.stringify(state)
     localStorage.setItem(STORAGE_KEY, json)
@@ -34,7 +34,7 @@ function saveToStorage(state: AppState): void {
 }
 
 // Load from localStorage
-function loadFromStorage(): AppState | null {
+export function loadFromStorage(): AppState | null {
   try {
     const json = localStorage.getItem(STORAGE_KEY)
     if (!json) return null

@@ -88,6 +88,7 @@ function App() {
                   onAddExerciseToDay={(exId) => actions.addExerciseToDay(activeDay.name, exId)}
                   onMoveExercise={(from, to) => actions.moveExerciseInDay(activeDay.name, from, to)}
                   onSetRestTime={actions.setRestTime}
+                  onClearRest={actions.clearRest}
                 />
               </div>
             )
@@ -103,6 +104,7 @@ function App() {
                 onLogSet={actions.logSet}
                 onSetRestTime={actions.setRestTime}
                 onClose={() => actions.selectExercise(undefined)}
+                onClearRest={actions.clearRest}
               />
             )
           }

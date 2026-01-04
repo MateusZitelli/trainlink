@@ -1,7 +1,17 @@
 import { useState, useMemo } from 'react'
-import type { HistoryEntry, SetEntry } from '../lib/state'
+import type { HistoryEntry, SetEntry, Difficulty } from '../lib/state'
 import { isSetEntry, isSessionEndMarker } from '../lib/state'
 import type { Exercise } from '../hooks/useExerciseDB'
+
+// Get border color class for difficulty
+function getDifficultyBorderColor(difficulty?: Difficulty): string {
+  switch (difficulty) {
+    case 'easy': return 'border border-blue-500'
+    case 'hard': return 'border border-orange-500'
+    case 'normal': return 'border border-[var(--success)]'
+    default: return ''
+  }
+}
 
 interface SessionLogProps {
   history: HistoryEntry[]
@@ -316,7 +326,7 @@ export function SessionLog({
                                 e.stopPropagation()
                                 setSelectedTs(set.ts)
                               }}
-                              className="px-2 py-1 bg-[var(--bg)] rounded text-sm"
+                              className={`px-2 py-1 bg-[var(--bg)] rounded text-sm ${getDifficultyBorderColor(set.difficulty)}`}
                             >
                               <span className="text-[var(--text-muted)]">{i + 1}.</span>{' '}
                               <span className="font-medium">{set.kg}kg × {set.reps}</span>

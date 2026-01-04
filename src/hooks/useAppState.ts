@@ -1,20 +1,16 @@
-import { useState, useEffect, useCallback } from 'react'
-import type { AppState, SetEntry } from '../lib/state'
+import { useCallback } from 'react'
+import type { SetEntry } from '../lib/state'
 import { findLastSessionEndIndex, isSetEntry, isSessionEndMarker, predictNextExercise } from '../lib/state'
-import { loadFromUrl, syncToUrl } from '../lib/url'
+import { useUrlState, updateStateFn } from '../lib/urlStore'
 
 export function useAppState() {
-  const [state, setState] = useState<AppState>(() => loadFromUrl())
+  // State is now derived directly from URL
+  const state = useUrlState()
 
-  // Sync to URL on state change
-  useEffect(() => {
-    syncToUrl(state)
-  }, [state])
-
-  // Actions
+  // Actions update URL directly (no useState, no useEffect sync)
 
   const addDay = useCallback((name: string) => {
-    setState(prev => ({
+    updateStateFn(prev => ({
       ...prev,
       plan: {
         ...prev.plan,
@@ -25,7 +21,7 @@ export function useAppState() {
   }, [])
 
   const renameDay = useCallback((oldName: string, newName: string) => {
-    setState(prev => ({
+    updateStateFn(prev => ({
       ...prev,
       plan: {
         ...prev.plan,
@@ -40,7 +36,7 @@ export function useAppState() {
   }, [])
 
   const deleteDay = useCallback((name: string) => {
-    setState(prev => {
+    updateStateFn(prev => {
       const newDays = prev.plan.days.filter(d => d.name !== name)
       return {
         ...prev,
@@ -53,14 +49,14 @@ export function useAppState() {
   }, [])
 
   const setActiveDay = useCallback((name: string) => {
-    setState(prev => ({
+    updateStateFn(prev => ({
       ...prev,
       session: { ...prev.session, activeDay: name, currentExId: undefined },
     }))
   }, [])
 
   const addExerciseToDay = useCallback((dayName: string, exerciseId: string) => {
-    setState(prev => ({
+    updateStateFn(prev => ({
       ...prev,
       plan: {
         ...prev.plan,
@@ -74,7 +70,7 @@ export function useAppState() {
   }, [])
 
   const removeExerciseFromDay = useCallback((dayName: string, exerciseId: string) => {
-    setState(prev => ({
+    updateStateFn(prev => ({
       ...prev,
       plan: {
         ...prev.plan,
@@ -88,7 +84,7 @@ export function useAppState() {
   }, [])
 
   const selectExercise = useCallback((exerciseId: string | undefined) => {
-    setState(prev => ({
+    updateStateFn(prev => ({
       ...prev,
       session: {
         ...prev.session,
@@ -99,7 +95,7 @@ export function useAppState() {
 
   const logSet = useCallback((entry: Omit<SetEntry, 'ts' | 'type'>) => {
     const now = Date.now()
-    setState(prev => {
+    updateStateFn(prev => {
       // Calculate rest duration from previous set if exists
       const lastEntry = prev.history.length > 0 ? prev.history[prev.history.length - 1] : null
       const updatedHistory = lastEntry && isSetEntry(lastEntry) && !lastEntry.rest
@@ -128,7 +124,7 @@ export function useAppState() {
   }, [])
 
   const clearRest = useCallback(() => {
-    setState(prev => ({
+    updateStateFn(prev => ({
       ...prev,
       session: prev.session
         ? { ...prev.session, restStartedAt: undefined }
@@ -138,7 +134,7 @@ export function useAppState() {
 
   // Session management
   const endSession = useCallback(() => {
-    setState(prev => ({
+    updateStateFn(prev => ({
       ...prev,
       history: [...prev.history, { type: 'session-end' as const, ts: Date.now() }],
       session: null,
@@ -146,7 +142,7 @@ export function useAppState() {
   }, [])
 
   const resumeSession = useCallback(() => {
-    setState(prev => {
+    updateStateFn(prev => {
       const lastEndIdx = findLastSessionEndIndex(prev.history)
       if (lastEndIdx === -1) return prev
 
@@ -162,7 +158,7 @@ export function useAppState() {
   }, [])
 
   const deleteSession = useCallback((sessionEndTs: number) => {
-    setState(prev => {
+    updateStateFn(prev => {
       const endIdx = prev.history.findIndex(
         e => isSessionEndMarker(e) && e.ts === sessionEndTs
       )
@@ -190,7 +186,7 @@ export function useAppState() {
   // Reordering
   const moveExerciseInDay = useCallback(
     (dayName: string, fromIndex: number, toIndex: number) => {
-      setState(prev => ({
+      updateStateFn(prev => ({
         ...prev,
         plan: {
           ...prev.plan,
@@ -208,7 +204,7 @@ export function useAppState() {
   )
 
   const moveDay = useCallback((fromIndex: number, toIndex: number) => {
-    setState(prev => {
+    updateStateFn(prev => {
       const days = [...prev.plan.days]
       const [moved] = days.splice(fromIndex, 1)
       days.splice(toIndex, 0, moved)
@@ -220,7 +216,7 @@ export function useAppState() {
   }, [])
 
   const setRestTime = useCallback((exId: string, seconds: number) => {
-    setState(prev => ({
+    updateStateFn(prev => ({
       ...prev,
       restTimes: {
         ...prev.restTimes,
@@ -230,7 +226,7 @@ export function useAppState() {
   }, [])
 
   const removeSet = useCallback((ts: number) => {
-    setState(prev => ({
+    updateStateFn(prev => ({
       ...prev,
       history: prev.history.filter(entry => entry.ts !== ts),
     }))

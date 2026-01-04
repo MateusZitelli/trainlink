@@ -1,5 +1,5 @@
 import type { HistoryEntry, SetEntry } from '../lib/state'
-import { getLastSet, getSetsForExerciseToday, getDefaultRest } from '../lib/state'
+import { getSetsForExerciseToday, getDefaultRest, predictExerciseValues } from '../lib/state'
 import { ExerciseRow } from './ExerciseRow'
 import { useExerciseDB } from '../hooks/useExerciseDB'
 
@@ -10,6 +10,7 @@ interface QuickExerciseProps {
   onLogSet: (entry: Omit<SetEntry, 'ts' | 'type'>) => void
   onSetRestTime: (exId: string, seconds: number) => void
   onClose: () => void
+  onClearRest: () => void
 }
 
 export function QuickExercise({
@@ -19,10 +20,11 @@ export function QuickExercise({
   onLogSet,
   onSetRestTime,
   onClose,
+  onClearRest,
 }: QuickExerciseProps) {
   const { getExercise } = useExerciseDB()
   const exercise = getExercise(exerciseId)
-  const lastSet = getLastSet(history, exerciseId)
+  const prediction = predictExerciseValues(history, restTimes, exerciseId)
   const todaySets = getSetsForExerciseToday(history, exerciseId)
 
   return (
@@ -30,13 +32,16 @@ export function QuickExercise({
       <ExerciseRow
         exercise={exercise}
         exerciseId={exerciseId}
-        lastSet={lastSet}
         todaySets={todaySets}
         isSelected={true}
-        restTime={getDefaultRest(history, exerciseId, restTimes)}
+        isNextExercise={false}
+        prediction={prediction}
+        restTime={prediction?.rest ?? getDefaultRest(history, exerciseId, restTimes)}
+        history={history}
         onClick={onClose}
-        onLogSet={(kg, reps) => onLogSet({ exId: exerciseId, kg, reps })}
+        onLogSet={(kg, reps, difficulty, duration) => onLogSet({ exId: exerciseId, kg, reps, difficulty, duration })}
         onSetRestTime={(seconds) => onSetRestTime(exerciseId, seconds)}
+        onStartSet={onClearRest}
       />
     </div>
   )

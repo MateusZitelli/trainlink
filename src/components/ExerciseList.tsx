@@ -1,5 +1,5 @@
 import type { Day, HistoryEntry, SetEntry } from '../lib/state'
-import { getLastSet, getSetsForExerciseToday, getDefaultRest, predictNextExercise, getCurrentSessionSets } from '../lib/state'
+import { getSetsForExerciseToday, getDefaultRest, predictNextExercise, predictExerciseValues, getCurrentSessionSets } from '../lib/state'
 import { ExerciseRow } from './ExerciseRow'
 import { useExerciseDB } from '../hooks/useExerciseDB'
 import { useMemo } from 'react'
@@ -31,6 +31,7 @@ interface ExerciseListProps {
   onAddExerciseToDay: (exId: string) => void
   onMoveExercise: (fromIndex: number, toIndex: number) => void
   onSetRestTime: (exId: string, seconds: number) => void
+  onClearRest: () => void
 }
 
 interface SortableExerciseProps {
@@ -39,11 +40,12 @@ interface SortableExerciseProps {
   history: HistoryEntry[]
   restTimes: Record<string, number>
   currentExId?: string
-  isPredicted: boolean
+  isNextExercise: boolean  // Arrow indicator for "next" exercise
   onSelectExercise: (exId: string | undefined) => void
   onRemoveExercise: (exId: string) => void
   onLogSet: (entry: Omit<SetEntry, 'ts' | 'type'>) => void
   onSetRestTime: (exId: string, seconds: number) => void
+  onClearRest: () => void
 }
 
 function SortableExercise({
@@ -52,15 +54,18 @@ function SortableExercise({
   history,
   restTimes,
   currentExId,
-  isPredicted,
+  isNextExercise,
   onSelectExercise,
   onRemoveExercise,
   onLogSet,
   onSetRestTime,
+  onClearRest,
 }: SortableExerciseProps) {
   const { getExercise } = useExerciseDB()
   const exercise = getExercise(exId)
-  const lastSet = getLastSet(history, exId)
+
+  // Get unified prediction for this specific exercise
+  const prediction = predictExerciseValues(history, restTimes, exId)
   const todaySets = getSetsForExerciseToday(history, exId)
   const isSelected = currentExId === exId
 
@@ -85,15 +90,17 @@ function SortableExercise({
       <ExerciseRow
         exercise={exercise}
         exerciseId={exId}
-        lastSet={lastSet}
         todaySets={todaySets}
         isSelected={isSelected}
-        isPredicted={isPredicted}
-        restTime={getDefaultRest(history, exId, restTimes)}
+        isNextExercise={isNextExercise}
+        prediction={prediction}
+        restTime={prediction?.rest ?? getDefaultRest(history, exId, restTimes)}
+        history={history}
         onClick={() => onSelectExercise(isSelected ? undefined : exId)}
         onRemove={() => onRemoveExercise(exId)}
-        onLogSet={(kg, reps) => onLogSet({ exId, kg, reps })}
+        onLogSet={(kg, reps, difficulty, duration) => onLogSet({ exId, kg, reps, difficulty, duration })}
         onSetRestTime={(seconds) => onSetRestTime(exId, seconds)}
+        onStartSet={onClearRest}
       />
     </div>
   )
@@ -111,16 +118,19 @@ export function ExerciseList({
   onAddExerciseToDay,
   onMoveExercise,
   onSetRestTime,
+  onClearRest,
 }: ExerciseListProps) {
   const { getExercise } = useExerciseDB()
 
-  // Get prediction for next exercise
-  const prediction = useMemo(() => predictNextExercise(history, restTimes), [history, restTimes])
+  // Get current session sets (for unplanned exercises list)
+  const currentSessionSets = useMemo(() => getCurrentSessionSets(history), [history])
+
+  // Get prediction for which exercise is "next" (for arrow indicator)
+  const nextExercisePrediction = useMemo(() => predictNextExercise(history, restTimes), [history, restTimes])
 
   // Get exercises done in current session that aren't in the plan
   const unplannedExercises = useMemo(() => {
-    const currentSets = getCurrentSessionSets(history)
-    const doneExIds = new Set(currentSets.map(s => s.exId))
+    const doneExIds = new Set(currentSessionSets.map(s => s.exId))
     const plannedExIds = new Set(day.exercises)
     const unplanned = Array.from(doneExIds).filter(exId => !plannedExIds.has(exId))
 
@@ -130,7 +140,7 @@ export function ExerciseList({
     }
 
     return unplanned
-  }, [history, day.exercises, currentExId])
+  }, [currentSessionSets, day.exercises, currentExId])
 
   // Create unique IDs for sortable (handle duplicate exercises)
   const sortableItems = day.exercises.map((exId, index) => ({
@@ -187,11 +197,12 @@ export function ExerciseList({
                 history={history}
                 restTimes={restTimes}
                 currentExId={currentExId}
-                isPredicted={prediction?.exId === item.exId}
+                isNextExercise={nextExercisePrediction?.exId === item.exId}
                 onSelectExercise={onSelectExercise}
                 onRemoveExercise={onRemoveExercise}
                 onLogSet={onLogSet}
                 onSetRestTime={onSetRestTime}
+                onClearRest={onClearRest}
               />
             ))}
           </div>
@@ -215,24 +226,27 @@ export function ExerciseList({
 
           {unplannedExercises.map((exId) => {
             const exercise = getExercise(exId)
-            const lastSet = getLastSet(history, exId)
+            const prediction = predictExerciseValues(history, restTimes, exId)
             const todaySets = getSetsForExerciseToday(history, exId)
             const isSelected = currentExId === exId
+            const isNextExercise = nextExercisePrediction?.exId === exId
 
             return (
               <ExerciseRow
                 key={exId}
                 exercise={exercise}
                 exerciseId={exId}
-                lastSet={lastSet}
                 todaySets={todaySets}
                 isSelected={isSelected}
-                isPredicted={prediction?.exId === exId}
-                restTime={getDefaultRest(history, exId, restTimes)}
+                isNextExercise={isNextExercise}
+                prediction={prediction}
+                restTime={prediction?.rest ?? getDefaultRest(history, exId, restTimes)}
+                history={history}
                 onClick={() => onSelectExercise(isSelected ? undefined : exId)}
                 onAddToPlan={() => onAddExerciseToDay(exId)}
-                onLogSet={(kg, reps) => onLogSet({ exId, kg, reps })}
+                onLogSet={(kg, reps, difficulty, duration) => onLogSet({ exId, kg, reps, difficulty, duration })}
                 onSetRestTime={(seconds) => onSetRestTime(exId, seconds)}
+                onStartSet={onClearRest}
               />
             )
           })}
