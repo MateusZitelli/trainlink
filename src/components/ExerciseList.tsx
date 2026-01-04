@@ -36,8 +36,6 @@ interface ExerciseListProps {
 interface SortableExerciseProps {
   id: string
   exId: string
-  index: number
-  totalCount: number
   history: HistoryEntry[]
   restTimes: Record<string, number>
   currentExId?: string
@@ -45,15 +43,12 @@ interface SortableExerciseProps {
   onSelectExercise: (exId: string | undefined) => void
   onRemoveExercise: (exId: string) => void
   onLogSet: (entry: Omit<SetEntry, 'ts' | 'type'>) => void
-  onMoveExercise: (fromIndex: number, toIndex: number) => void
   onSetRestTime: (exId: string, seconds: number) => void
 }
 
 function SortableExercise({
   id,
   exId,
-  index,
-  totalCount,
   history,
   restTimes,
   currentExId,
@@ -61,7 +56,6 @@ function SortableExercise({
   onSelectExercise,
   onRemoveExercise,
   onLogSet,
-  onMoveExercise,
   onSetRestTime,
 }: SortableExerciseProps) {
   const { getExercise } = useExerciseDB()
@@ -87,34 +81,14 @@ function SortableExercise({
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-1">
-      {/* Drag handle + reorder arrows */}
-      <div className="flex flex-col -my-1 touch-none" {...attributes} {...listeners}>
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            if (index > 0) onMoveExercise(index, index - 1)
-          }}
-          disabled={index === 0}
-          className="p-1 text-[var(--text-muted)] disabled:opacity-30 text-xs"
-          aria-label="Move up"
-        >
-          ▲
-        </button>
-        <div className="px-1 text-[var(--text-muted)] text-xs cursor-grab active:cursor-grabbing">
-          ⋮⋮
-        </div>
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            if (index < totalCount - 1) onMoveExercise(index, index + 1)
-          }}
-          disabled={index === totalCount - 1}
-          className="p-1 text-[var(--text-muted)] disabled:opacity-30 text-xs"
-          aria-label="Move down"
-        >
-          ▼
-        </button>
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2">
+      {/* Drag handle */}
+      <div
+        className="text-[var(--text-muted)] opacity-40 text-sm cursor-grab active:cursor-grabbing touch-none select-none"
+        {...attributes}
+        {...listeners}
+      >
+        ⋮⋮
       </div>
 
       <div className="flex-1">
@@ -166,7 +140,6 @@ export function ExerciseList({
   const sortableItems = day.exercises.map((exId, index) => ({
     id: `${exId}-${index}`,
     exId,
-    index,
   }))
 
   const sensors = useSensors(
@@ -215,8 +188,6 @@ export function ExerciseList({
                 key={item.id}
                 id={item.id}
                 exId={item.exId}
-                index={item.index}
-                totalCount={day.exercises.length}
                 history={history}
                 restTimes={restTimes}
                 currentExId={currentExId}
@@ -224,7 +195,6 @@ export function ExerciseList({
                 onSelectExercise={onSelectExercise}
                 onRemoveExercise={onRemoveExercise}
                 onLogSet={onLogSet}
-                onMoveExercise={onMoveExercise}
                 onSetRestTime={onSetRestTime}
               />
             ))}
@@ -255,9 +225,9 @@ export function ExerciseList({
 
             return (
               <div key={exId}>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
                   {/* Spacer to align with planned exercises */}
-                  <div className="w-8" />
+                  <div className="w-4" />
 
                   <div className="flex-1">
                     <ExerciseRow
