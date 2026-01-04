@@ -2,9 +2,9 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 
 const EXERCISES_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json'
 const IMAGE_BASE_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'
-const CACHE_KEY = 'workout-exercise-cache-v3'
-const DB_CACHE_KEY = 'workout-free-exercise-db-v2'
-const FILTER_OPTIONS_KEY = 'workout-filter-options'
+const CACHE_KEY = 'workout-exercise-cache-v4'
+const DB_CACHE_KEY = 'workout-free-exercise-db-v3'
+const FILTER_OPTIONS_KEY = 'workout-filter-options-v2'
 
 // Filter options - will be populated from data
 export interface FilterOptions {
