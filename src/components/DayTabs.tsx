@@ -120,6 +120,9 @@ export function DayTabs({
                 onClick={() => {
                   if (contextMenu) {
                     setContextMenu(null)
+                  } else if (activeDay === day.name) {
+                    // Clicking the active day toggles collapse
+                    onToggleCollapse()
                   } else {
                     onSelectDay(day.name)
                   }

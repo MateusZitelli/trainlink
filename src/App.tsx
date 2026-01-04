@@ -79,11 +79,11 @@ function App() {
           if (activeDay) {
             // Show collapsed view if requested
             if (isDayCollapsed) {
-              return <div className="pt-4 pb-32" />
+              return <div className="pt-4 pb-[60vh]" />
             }
 
             return (
-              <div className="pt-4 pb-32">
+              <div className="pt-4 pb-[60vh]">
                 <ExerciseList
                   day={activeDay}
                   history={state.history}
@@ -117,7 +117,7 @@ function App() {
             )
           }
 
-          return <div className="pt-4 pb-32" />
+          return <div className="pt-4 pb-[60vh]" />
         })()}
       </div>
 
