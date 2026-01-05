@@ -9,8 +9,10 @@ import type {
   CompactSessionEndMarker,
   CompactSession,
   CompactShareData,
+  CompactSetPattern,
 } from './types'
 import { DIFFICULTY_TO_NUM, NUM_TO_DIFFICULTY } from './types'
+import type { SetPattern } from '../url'
 
 // Convert Day to compact format
 function dayToCompact(day: Day): CompactDay {
@@ -129,13 +131,55 @@ export function fromCompact(compact: CompactAppState): AppState {
   }
 }
 
+// Convert SetPattern to compact format
+function setPatternToCompact(pattern: SetPattern): CompactSetPattern {
+  const compact: CompactSetPattern = {
+    k: pattern.kg,
+    c: pattern.reps,
+  }
+  if (pattern.difficulty !== undefined) compact.d = DIFFICULTY_TO_NUM[pattern.difficulty]
+  return compact
+}
+
+// Convert compact SetPattern back to full format
+function setPatternFromCompact(compact: CompactSetPattern): SetPattern {
+  const pattern: SetPattern = {
+    kg: compact.k,
+    reps: compact.c,
+  }
+  if (compact.d !== undefined) pattern.difficulty = NUM_TO_DIFFICULTY[compact.d] as Difficulty
+  return pattern
+}
+
+// Convert set patterns map to compact format
+function setPatternsToCompact(patterns: Record<string, SetPattern[]>): Record<string, CompactSetPattern[]> {
+  const compact: Record<string, CompactSetPattern[]> = {}
+  for (const [exId, setPatterns] of Object.entries(patterns)) {
+    compact[exId] = setPatterns.map(setPatternToCompact)
+  }
+  return compact
+}
+
+// Convert compact set patterns map back to full format
+function setPatternsFromCompact(compact: Record<string, CompactSetPattern[]>): Record<string, SetPattern[]> {
+  const patterns: Record<string, SetPattern[]> = {}
+  for (const [exId, compactPatterns] of Object.entries(compact)) {
+    patterns[exId] = compactPatterns.map(setPatternFromCompact)
+  }
+  return patterns
+}
+
 // Convert ShareData to compact format
 export function toCompactShare(data: ShareData): CompactShareData {
-  return {
+  const compact: CompactShareData = {
     v: 2,
     d: dayToCompact(data.day),
     r: data.restTimes,
   }
+  if (data.setPatterns && Object.keys(data.setPatterns).length > 0) {
+    compact.p = setPatternsToCompact(data.setPatterns)
+  }
+  return compact
 }
 
 // Convert compact format back to ShareData
@@ -143,5 +187,6 @@ export function fromCompactShare(compact: CompactShareData): ShareData {
   return {
     day: dayFromCompact(compact.d),
     restTimes: compact.r,
+    setPatterns: compact.p ? setPatternsFromCompact(compact.p) : {},
   }
 }

@@ -40,10 +40,18 @@ export interface CompactAppState {
   r: Record<string, number>  // restTimes
 }
 
+// Set pattern compact format
+export interface CompactSetPattern {
+  k: number  // kg
+  c: number  // reps (count)
+  d?: 0 | 1 | 2  // difficulty
+}
+
 export interface CompactShareData {
   v: 2  // schema version
   d: CompactDay  // day
   r: Record<string, number>  // restTimes
+  p?: Record<string, CompactSetPattern[]>  // setPatterns
 }
 
 // Difficulty mapping

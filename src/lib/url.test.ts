@@ -118,6 +118,7 @@ describe('url.ts', () => {
       const shareData: ShareData = {
         day: { name: 'Push Day', exercises: ['0001', '0002', '0003'] },
         restTimes: { '0001': 90, '0002': 120 },
+        setPatterns: {},
       }
       const encoded = encodeShareData(shareData)
       const decoded = decodeShareData(encoded)
@@ -128,6 +129,27 @@ describe('url.ts', () => {
       const shareData: ShareData = {
         day: { name: 'Pull', exercises: ['ex1'] },
         restTimes: {},
+        setPatterns: {},
+      }
+      const encoded = encodeShareData(shareData)
+      const decoded = decodeShareData(encoded)
+      expect(decoded).toEqual(shareData)
+    })
+
+    it('encodes and decodes set patterns', () => {
+      const shareData: ShareData = {
+        day: { name: 'Push', exercises: ['bench', 'ohp'] },
+        restTimes: { 'bench': 120, 'ohp': 90 },
+        setPatterns: {
+          'bench': [
+            { kg: 100, reps: 5 },
+            { kg: 80, reps: 8, difficulty: 'normal' },
+            { kg: 60, reps: 12, difficulty: 'hard' },
+          ],
+          'ohp': [
+            { kg: 50, reps: 8, difficulty: 'easy' },
+          ],
+        },
       }
       const encoded = encodeShareData(shareData)
       const decoded = decodeShareData(encoded)
@@ -159,16 +181,16 @@ describe('url.ts', () => {
     })
 
     it('decodes legacy v1 share data', () => {
-      const legacyShareData: ShareData = {
+      const legacyShareData = {
         day: { name: 'Upper Body', exercises: ['bench', 'rows'] },
         restTimes: { bench: 120, rows: 90 },
       }
       // Encode using old lz-string format (v1)
       const legacyEncoded = lzString.compressToEncodedURIComponent(JSON.stringify(legacyShareData))
 
-      // Should decode correctly
+      // Should decode correctly with setPatterns added for backward compatibility
       const decoded = decodeShareData(legacyEncoded)
-      expect(decoded).toEqual(legacyShareData)
+      expect(decoded).toEqual({ ...legacyShareData, setPatterns: {} })
     })
 
     it('decodes legacy state with all optional fields', () => {

@@ -1,15 +1,18 @@
 import { useEffect } from 'react'
-import type { Day } from '../lib/state'
+import type { Day, Difficulty } from '../lib/state'
+import type { SetPattern } from '../lib/url'
 import { useExerciseDB } from '../hooks/useExerciseDB'
 import { useImageRotation } from '../hooks/useImageRotation'
+import { getDifficultyColor } from '../lib/utils'
 
 interface ShareDayViewProps {
   day: Day
   restTimes: Record<string, number>
+  setPatterns: Record<string, SetPattern[]>
   onBack: () => void
 }
 
-export function ShareDayView({ day, restTimes, onBack }: ShareDayViewProps) {
+export function ShareDayView({ day, restTimes, setPatterns, onBack }: ShareDayViewProps) {
   const { getExercise, fetchExercises } = useExerciseDB()
 
   // Fetch exercise details
@@ -87,6 +90,7 @@ export function ShareDayView({ day, restTimes, onBack }: ShareDayViewProps) {
           {day.exercises.map((exId, idx) => {
             const exercise = getExercise(exId)
             const restTime = restTimes[exId] ?? 90
+            const pattern = setPatterns[exId] || []
 
             return (
               <ExerciseCard
@@ -95,6 +99,7 @@ export function ShareDayView({ day, restTimes, onBack }: ShareDayViewProps) {
                 exId={exId}
                 index={idx + 1}
                 restTime={restTime}
+                setPattern={pattern}
                 isLast={idx === day.exercises.length - 1}
               />
             )
@@ -115,10 +120,11 @@ interface ExerciseCardProps {
   exId: string
   index: number
   restTime: number
+  setPattern: SetPattern[]
   isLast: boolean
 }
 
-function ExerciseCard({ exercise, exId, index, restTime, isLast }: ExerciseCardProps) {
+function ExerciseCard({ exercise, exId, index, restTime, setPattern, isLast }: ExerciseCardProps) {
   const imageUrls = exercise?.imageUrls || []
   const imageIndex = useImageRotation(imageUrls, 2000)
   const name = exercise?.name || exId
@@ -132,6 +138,8 @@ function ExerciseCard({ exercise, exId, index, restTime, isLast }: ExerciseCardP
     if (mins > 0) return `${mins}m`
     return `${secs}s`
   }
+
+  const numSets = setPattern.length
 
   return (
     <div className="relative">
@@ -167,16 +175,53 @@ function ExerciseCard({ exercise, exId, index, restTime, isLast }: ExerciseCardP
               <p className="text-white/50 text-sm">{equipment}</p>
             )}
 
-            {/* Rest time badge */}
-            <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-              {formatRestTime(restTime)} rest
+            {/* Set count and rest time badges */}
+            <div className="mt-2 flex flex-wrap gap-2">
+              {numSets > 0 && (
+                <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 20V10" />
+                    <path d="M18 20V4" />
+                    <path d="M6 20v-4" />
+                  </svg>
+                  {numSets} set{numSets !== 1 ? 's' : ''}
+                </div>
+              )}
+              <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                {formatRestTime(restTime)} rest
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Set pattern display */}
+        {setPattern.length > 0 && (
+          <div className="px-4 pb-4">
+            <div className="flex flex-wrap gap-2">
+              {setPattern.map((set, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10"
+                >
+                  <span className="text-white/40 text-xs font-medium">#{i + 1}</span>
+                  <span className="text-white font-medium">{set.kg}kg</span>
+                  <span className="text-white/50">×</span>
+                  <span className="text-white font-medium">{set.reps}</span>
+                  {set.difficulty && (
+                    <span
+                      className="w-2 h-2 rounded-full ml-1"
+                      style={{ backgroundColor: getDifficultyColor(set.difficulty) }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Arrow connector to next exercise */}

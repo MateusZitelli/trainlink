@@ -37,4 +37,5 @@ export {
   predictNextExercise,
   predictExerciseValues,
   predictDropSetTrend,
+  getExercisePatternFromLastSession,
 } from './predictions'

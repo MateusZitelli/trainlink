@@ -1,16 +1,24 @@
 import lzString from 'lz-string'
-import type { AppState, Day } from './state'
-import { INITIAL_STATE } from './state'
+import type { AppState, Day, HistoryEntry, Difficulty } from './state'
+import { INITIAL_STATE, getExercisePatternFromLastSession } from './state'
 import { compress, decompress, isV2Format } from './url/compress'
 import { toCompact, fromCompact, toCompactShare, fromCompactShare } from './url/schema'
 import type { CompactAppState, CompactShareData } from './url/types'
 
 const STORAGE_KEY = 'trainlink-state'
 
+// Set pattern from last session
+export interface SetPattern {
+  kg: number
+  reps: number
+  difficulty?: Difficulty
+}
+
 // Share data structure - contains workout plan (not results)
 export interface ShareData {
   day: Day
   restTimes: Record<string, number>  // Rest time per exercise
+  setPatterns: Record<string, SetPattern[]>  // Last session pattern per exercise
 }
 
 // Encode share data to URL-safe string (v2 format with fflate compression)
@@ -29,22 +37,37 @@ export function decodeShareData(encoded: string): ShareData | null {
     // Legacy v1 format: lz-string
     const json = lzString.decompressFromEncodedURIComponent(encoded)
     if (!json) return null
-    return JSON.parse(json) as ShareData
+    const data = JSON.parse(json) as ShareData
+    // Ensure setPatterns exists for backward compatibility
+    if (!data.setPatterns) data.setPatterns = {}
+    return data
   } catch {
     return null
   }
 }
 
 // Generate share URL for a day
-export function generateShareUrl(day: Day, restTimes: Record<string, number>): string {
+export function generateShareUrl(
+  day: Day,
+  restTimes: Record<string, number>,
+  history: HistoryEntry[]
+): string {
   // Only include rest times for exercises in this day
   const dayRestTimes: Record<string, number> = {}
+  const setPatterns: Record<string, SetPattern[]> = {}
+
   for (const exId of day.exercises) {
     if (restTimes[exId] !== undefined) {
       dayRestTimes[exId] = restTimes[exId]
     }
+    // Get last session pattern for this exercise
+    const pattern = getExercisePatternFromLastSession(history, exId)
+    if (pattern) {
+      setPatterns[exId] = pattern
+    }
   }
-  const data: ShareData = { day, restTimes: dayRestTimes }
+
+  const data: ShareData = { day, restTimes: dayRestTimes, setPatterns }
   const encoded = encodeShareData(data)
   return `${window.location.origin}${window.location.pathname}?share=${encoded}`
 }

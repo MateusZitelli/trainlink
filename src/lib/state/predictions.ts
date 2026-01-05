@@ -326,7 +326,7 @@ export function predictNextExercise(
 }
 
 // Get all sets for an exercise from the most recent session that contains it
-function getExercisePatternFromLastSession(
+export function getExercisePatternFromLastSession(
   history: HistoryEntry[],
   exId: string
 ): { kg: number; reps: number; difficulty?: Difficulty }[] | null {
