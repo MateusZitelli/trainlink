@@ -3,7 +3,7 @@ import type { Day, SetEntry, HistoryEntry } from '../lib/state'
 import { isSetEntry, isSessionEndMarker } from '../lib/state'
 import { useExerciseDB } from '../hooks/useExerciseDB'
 import { useImageRotation } from '../hooks/useImageRotation'
-import { getDifficultyColor, formatDuration } from '../lib/utils'
+import { formatDuration } from '../lib/utils'
 
 interface ShareDayViewProps {
   day: Day
