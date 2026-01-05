@@ -73,6 +73,13 @@ function App() {
     window.history.replaceState(null, '', window.location.pathname + window.location.hash)
   }
 
+  // Auto-select first day if we have days but no active day
+  useEffect(() => {
+    if (!shareData && state.plan.days.length > 0 && !state.session?.activeDay) {
+      actions.setActiveDay(state.plan.days[0].name)
+    }
+  }, [shareData, state.plan.days, state.session?.activeDay, actions])
+
   // Show share view if we have share data
   if (shareData) {
     return (
@@ -83,13 +90,6 @@ function App() {
       />
     )
   }
-
-  // Auto-select first day if we have days but no active day
-  useEffect(() => {
-    if (state.plan.days.length > 0 && !state.session?.activeDay) {
-      actions.setActiveDay(state.plan.days[0].name)
-    }
-  }, [state.plan.days, state.session?.activeDay, actions])
 
   return (
     <div className="h-full flex flex-col bg-[var(--bg)]">

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import type { Day, SetEntry, HistoryEntry } from '../lib/state'
 import { isSetEntry, isSessionEndMarker } from '../lib/state'
 import { useExerciseDB } from '../hooks/useExerciseDB'
@@ -28,7 +28,7 @@ export function ShareDayView({ day, history, onBack }: ShareDayViewProps) {
   const { getExercise, fetchExercises } = useExerciseDB()
 
   // Fetch exercise details
-  useMemo(() => {
+  useEffect(() => {
     if (day.exercises.length > 0) {
       fetchExercises(day.exercises)
     }
