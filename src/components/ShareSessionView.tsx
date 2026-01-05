@@ -2,7 +2,15 @@ import { useEffect, useMemo } from 'react'
 import type { SetEntry } from '../lib/state'
 import type { ShareSessionData } from '../lib/url'
 import { useExerciseDB } from '../hooks/useExerciseDB'
-import { getDifficultyColor, formatDuration, formatRest } from '../lib/utils'
+import { useImageRotation } from '../hooks/useImageRotation'
+import { formatDuration, formatRest } from '../lib/utils'
+
+interface Exercise {
+  name: string
+  imageUrls?: string[]
+  targetMuscles?: string[]
+  equipment?: string | null
+}
 
 interface ShareSessionViewProps {
   sessionData: ShareSessionData
@@ -291,22 +299,30 @@ export function ShareSessionView({ sessionData, onBack }: ShareSessionViewProps)
 
 interface CircuitCardProps {
   circuit: CircuitGroup
-  getExercise: (id: string) => { name: string } | null
+  getExercise: (id: string) => Exercise | null
 }
 
 function CircuitCard({ circuit, getExercise }: CircuitCardProps) {
-  const exerciseNames = circuit.pattern.map(id => {
-    const name = getExercise(id)?.name ?? id
-    return name.split(' ').slice(0, 3).join(' ')
-  })
+  const exercises = circuit.pattern.map(id => ({
+    id,
+    exercise: getExercise(id),
+    name: getExercise(id)?.name?.split(' ').slice(0, 3).join(' ') ?? id
+  }))
 
   return (
     <div className="bg-white/5 backdrop-blur-sm rounded-2xl overflow-hidden border border-white/10 p-4">
-      {/* Circuit Header */}
+      {/* Circuit Header with Images */}
       <div className="flex items-center gap-2 mb-4">
         <span className="text-green-400 text-xl">⟳</span>
-        <span className="font-semibold text-white">{exerciseNames.join(' + ')}</span>
+        <span className="font-semibold text-white">{exercises.map(e => e.name).join(' + ')}</span>
         <span className="text-white/40 text-sm ml-auto">{circuit.rounds.length} rounds</span>
+      </div>
+
+      {/* Exercise Images Row */}
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+        {exercises.map(({ id, exercise, name }) => (
+          <CircuitExerciseImage key={id} exercise={exercise} name={name} />
+        ))}
       </div>
 
       {/* Rounds */}
@@ -329,7 +345,7 @@ function CircuitCard({ circuit, getExercise }: CircuitCardProps) {
                     {set.difficulty && (
                       <span
                         className="w-2 h-2 rounded-full ml-1"
-                        style={{ backgroundColor: getDifficultyColor(set.difficulty).replace('bg-', '').includes('var') ? 'var(--success)' : getDifficultyColorHex(set.difficulty) }}
+                        style={{ backgroundColor: getDifficultyColorHex(set.difficulty) }}
                       />
                     )}
                   </div>
@@ -343,10 +359,35 @@ function CircuitCard({ circuit, getExercise }: CircuitCardProps) {
   )
 }
 
+// Separate component for circuit exercise images to use hooks properly
+function CircuitExerciseImage({ exercise, name }: { exercise: Exercise | null; name: string }) {
+  const imageUrls = exercise?.imageUrls ?? []
+  const imageIndex = useImageRotation(imageUrls, 2000)
+
+  return (
+    <div className="shrink-0 text-center">
+      <div className="w-16 h-16 rounded-xl overflow-hidden bg-white/10">
+        {imageUrls.length > 0 ? (
+          <img
+            src={imageUrls[imageIndex]}
+            alt={name}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-white/30 text-xl">
+            💪
+          </div>
+        )}
+      </div>
+      <div className="text-white/50 text-xs mt-1 max-w-16 truncate">{name.split(' ')[0]}</div>
+    </div>
+  )
+}
+
 interface ExerciseCardProps {
   exId: string
   sets: SetEntry[]
-  getExercise: (id: string) => { name: string; targetMuscles?: string[]; equipment?: string | null } | null
+  getExercise: (id: string) => Exercise | null
 }
 
 function ExerciseCard({ exId, sets, getExercise }: ExerciseCardProps) {
@@ -354,6 +395,8 @@ function ExerciseCard({ exId, sets, getExercise }: ExerciseCardProps) {
   const name = exercise?.name ?? exId
   const muscles = exercise?.targetMuscles?.slice(0, 2).join(', ') ?? ''
   const equipment = exercise?.equipment ?? ''
+  const imageUrls = exercise?.imageUrls ?? []
+  const imageIndex = useImageRotation(imageUrls, 2000)
 
   // Calculate exercise stats
   const exerciseVolume = sets.reduce((sum, s) => sum + s.kg * s.reps, 0)
@@ -361,17 +404,35 @@ function ExerciseCard({ exId, sets, getExercise }: ExerciseCardProps) {
 
   return (
     <div className="bg-white/5 backdrop-blur-sm rounded-2xl overflow-hidden border border-white/10 p-4">
-      {/* Exercise Header */}
-      <div className="mb-4">
-        <h3 className="font-semibold text-white text-lg">{name}</h3>
-        <div className="flex items-center gap-2 mt-1">
-          {muscles && <span className="text-purple-300 text-sm">{muscles}</span>}
-          {muscles && equipment && <span className="text-white/30">·</span>}
-          {equipment && <span className="text-white/50 text-sm">{equipment}</span>}
+      {/* Exercise Header with Image */}
+      <div className="flex gap-4 mb-4">
+        {/* Exercise Image */}
+        <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-white/10 shrink-0">
+          {imageUrls.length > 0 ? (
+            <img
+              src={imageUrls[imageIndex]}
+              alt={name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-white/30 text-2xl">
+              💪
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-4 mt-2 text-sm">
-          <span className="text-cyan-300">{Math.round(exerciseVolume).toLocaleString()}kg volume</span>
-          <span className="text-orange-300">Max: {maxWeight}kg</span>
+
+        {/* Exercise Info */}
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-white text-lg truncate">{name}</h3>
+          <div className="flex items-center gap-2 mt-1">
+            {muscles && <span className="text-purple-300 text-sm">{muscles}</span>}
+            {muscles && equipment && <span className="text-white/30">·</span>}
+            {equipment && <span className="text-white/50 text-sm">{equipment}</span>}
+          </div>
+          <div className="flex items-center gap-4 mt-2 text-sm">
+            <span className="text-cyan-300">{Math.round(exerciseVolume).toLocaleString()}kg</span>
+            <span className="text-orange-300">Max: {maxWeight}kg</span>
+          </div>
         </div>
       </div>
 
