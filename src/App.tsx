@@ -16,9 +16,21 @@ function App() {
   const { state, actions } = useAppState()
   const [showSearch, setShowSearch] = useState(false)
   const [shareData, setShareData] = useState<ReturnType<typeof parseShareFromUrl>>(null)
-  const { getExercise, fetchExercises } = useExerciseDB()
+  const { getExercise, fetchExercises, dbReady } = useExerciseDB()
 
   const activeDay = state.plan.days.find(d => d.name === state.session?.activeDay)
+
+  // Show loading while exercise DB initializes (only if we have exercises to load)
+  const needsExercises = state.plan.days.some(d => d.exercises.length > 0) || state.history.length > 0
+  if (!dbReady && needsExercises) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center bg-[var(--bg)]">
+        <div className="text-5xl mb-4">💪</div>
+        <div className="text-xl font-bold mb-2">TrainLink</div>
+        <div className="w-8 h-8 border-2 border-[var(--border)] border-t-[var(--text)] rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   // Check for share URL on mount
   useEffect(() => {
