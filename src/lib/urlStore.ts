@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from 'react'
 import type { AppState } from './state'
 import { INITIAL_STATE } from './state'
-import { urlToState, stateToUrl, saveToStorage, loadFromStorage } from './url'
+import { urlToState, stateToUrl, saveToStorage, loadFromStorage, syncToUrl } from './url'
+import { isV2Format } from './url/compress'
 
 // Module-level state
 let listeners: Set<() => void> = new Set()
@@ -19,6 +20,14 @@ export function getSnapshot(): AppState {
   // Parse fresh state from URL
   cachedHash = currentHash
   cachedState = urlToState(currentHash) ?? loadFromStorage() ?? INITIAL_STATE
+
+  // Auto-convert v1 URLs to v2 format
+  const hashData = currentHash.slice(1)
+  if (hashData && !isV2Format(hashData) && cachedState !== INITIAL_STATE) {
+    syncToUrl(cachedState)
+    cachedHash = window.location.hash
+  }
+
   return cachedState
 }
 
