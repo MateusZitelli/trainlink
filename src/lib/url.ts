@@ -2,8 +2,11 @@ import lzString from 'lz-string'
 import type { AppState, Day, HistoryEntry, Difficulty } from './state'
 import { INITIAL_STATE, getExercisePatternFromLastSession } from './state'
 import { compress, decompress, isV2Format } from './url/compress'
-import { toCompact, fromCompact, toCompactShare, fromCompactShare } from './url/schema'
-import type { CompactAppState, CompactShareData } from './url/types'
+import { toCompact, fromCompact, toCompactShare, fromCompactShare, toCompactShareSession, fromCompactShareSession } from './url/schema'
+import type { ShareSessionData } from './url/schema'
+import type { CompactAppState, CompactShareData, CompactShareSessionData } from './url/types'
+
+export type { ShareSessionData } from './url/schema'
 
 const STORAGE_KEY = 'trainlink-state'
 
@@ -78,6 +81,56 @@ export function parseShareFromUrl(): ShareData | null {
   const shareParam = params.get('share')
   if (!shareParam) return null
   return decodeShareData(shareParam)
+}
+
+// Session share URL functions (v3 format)
+
+// Encode session share data to URL-safe string (v3 format)
+export function encodeSessionShareData(data: ShareSessionData): string {
+  const compact = toCompactShareSession(data)
+  return compress(compact, '3')
+}
+
+// Decode session share data from URL
+export function decodeSessionShareData(encoded: string): ShareSessionData | null {
+  try {
+    // Session shares always use v3 format (starts with "3")
+    if (!encoded.startsWith('3')) return null
+    const compact = decompress(encoded) as CompactShareSessionData
+    if (compact.v !== 3) return null
+    return fromCompactShareSession(compact)
+  } catch {
+    return null
+  }
+}
+
+// Generate share URL for a session
+export function generateSessionShareUrl(
+  sessionName: string,
+  session: { sets: { type: 'set'; exId: string; ts: number; kg: number; reps: number; rest?: number; difficulty?: Difficulty; duration?: number }[]; startTs: number; endTs: number },
+  previousSession?: { sets: { type: 'set'; exId: string; ts: number; kg: number; reps: number; rest?: number; difficulty?: Difficulty; duration?: number }[]; startTs: number; endTs: number }
+): string {
+  const data: ShareSessionData = {
+    sessionName,
+    startTs: session.startTs,
+    endTs: session.endTs,
+    sets: session.sets,
+    previousSession: previousSession ? {
+      startTs: previousSession.startTs,
+      endTs: previousSession.endTs,
+      sets: previousSession.sets,
+    } : undefined,
+  }
+  const encoded = encodeSessionShareData(data)
+  return `${window.location.origin}${window.location.pathname}?session=${encoded}`
+}
+
+// Parse current URL for session share data
+export function parseSessionShareFromUrl(): ShareSessionData | null {
+  const params = new URLSearchParams(window.location.search)
+  const sessionParam = params.get('session')
+  if (!sessionParam) return null
+  return decodeSessionShareData(sessionParam)
 }
 
 // Convert state to URL hash (v2 format with fflate compression)

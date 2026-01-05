@@ -10,6 +10,7 @@ import type {
   CompactSession,
   CompactShareData,
   CompactSetPattern,
+  CompactShareSessionData,
 } from './types'
 import { DIFFICULTY_TO_NUM, NUM_TO_DIFFICULTY } from './types'
 import type { SetPattern } from '../url'
@@ -189,4 +190,54 @@ export function fromCompactShare(compact: CompactShareData): ShareData {
     restTimes: compact.r,
     setPatterns: compact.p ? setPatternsFromCompact(compact.p) : {},
   }
+}
+
+// Session share data type
+export interface ShareSessionData {
+  sessionName: string
+  startTs: number
+  endTs: number
+  sets: SetEntry[]
+  previousSession?: {
+    startTs: number
+    endTs: number
+    sets: SetEntry[]
+  }
+}
+
+// Convert ShareSessionData to compact format
+export function toCompactShareSession(data: ShareSessionData): CompactShareSessionData {
+  const compact: CompactShareSessionData = {
+    v: 3,
+    n: data.sessionName,
+    s: data.startTs,
+    e: data.endTs,
+    t: data.sets.map(setEntryToCompact),
+  }
+  if (data.previousSession) {
+    compact.p = {
+      s: data.previousSession.startTs,
+      e: data.previousSession.endTs,
+      t: data.previousSession.sets.map(setEntryToCompact),
+    }
+  }
+  return compact
+}
+
+// Convert compact format back to ShareSessionData
+export function fromCompactShareSession(compact: CompactShareSessionData): ShareSessionData {
+  const data: ShareSessionData = {
+    sessionName: compact.n,
+    startTs: compact.s,
+    endTs: compact.e,
+    sets: compact.t.map(setEntryFromCompact),
+  }
+  if (compact.p) {
+    data.previousSession = {
+      startTs: compact.p.s,
+      endTs: compact.p.e,
+      sets: compact.p.t.map(setEntryFromCompact),
+    }
+  }
+  return data
 }

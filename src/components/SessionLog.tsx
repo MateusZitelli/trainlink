@@ -17,9 +17,10 @@ interface SessionLogProps {
   onResumeSession: () => void
   onDeleteSession: (sessionEndTs: number) => void
   onRemoveSet: (ts: number) => void
+  onShareSession?: (session: Session) => void
 }
 
-interface Session {
+export interface Session {
   sets: SetEntry[]
   endTs: number | null // null if in progress
   startTs: number
@@ -162,6 +163,7 @@ export function SessionLog({
   onResumeSession,
   onDeleteSession,
   onRemoveSet,
+  onShareSession,
 }: SessionLogProps) {
   const [expandedSessionIdx, setExpandedSessionIdx] = useState<number | null>(0)
   const [selectedTs, setSelectedTs] = useState<number | null>(null)
@@ -356,30 +358,51 @@ export function SessionLog({
                   >
                     Finish Day
                   </button>
-                ) : isLastCompleted ? (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onResumeSession()
-                    }}
-                    className="px-3 py-1.5 text-sm bg-[var(--surface)] rounded-lg hover:bg-[var(--border)]"
-                  >
-                    Resume Day
-                  </button>
                 ) : (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (session.endTs) onDeleteSession(session.endTs)
-                    }}
-                    className="px-3 py-1.5 text-sm text-red-500 bg-[var(--surface)] rounded-lg hover:bg-red-500 hover:text-white flex items-center gap-1"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                    </svg>
-                    Delete
-                  </button>
+                  <>
+                    {/* Share button for completed sessions */}
+                    {onShareSession && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onShareSession(session)
+                        }}
+                        className="p-2 text-[var(--text-muted)] bg-[var(--surface)] rounded-lg hover:text-[var(--text)] hover:bg-[var(--border)]"
+                        title="Share session"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                          <polyline points="16 6 12 2 8 6" />
+                          <line x1="12" y1="2" x2="12" y2="15" />
+                        </svg>
+                      </button>
+                    )}
+                    {isLastCompleted ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onResumeSession()
+                        }}
+                        className="px-3 py-1.5 text-sm bg-[var(--surface)] rounded-lg hover:bg-[var(--border)]"
+                      >
+                        Resume Day
+                      </button>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (session.endTs) onDeleteSession(session.endTs)
+                        }}
+                        className="px-3 py-1.5 text-sm text-red-500 bg-[var(--surface)] rounded-lg hover:bg-red-500 hover:text-white flex items-center gap-1"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                        Delete
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </button>

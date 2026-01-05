@@ -3,19 +3,19 @@ import { DayTabs } from './components/DayTabs'
 import { ExerciseList } from './components/ExerciseList'
 import { RestTimer } from './components/RestTimer'
 import { SearchView } from './components/SearchView'
-import { SessionLog } from './components/SessionLog'
+import { SessionLog, type Session } from './components/SessionLog'
 import { QuickExercise } from './components/QuickExercise'
-import { ShareDayView } from './components/ShareDayView'
+import { ShareSessionView } from './components/ShareSessionView'
 import { useExerciseDB } from './hooks/useExerciseDB'
 import { isSetEntry } from './lib/state'
-import { parseShareFromUrl, clearStorage, generateShareUrl } from './lib/url'
-import { useState, useMemo, useEffect } from 'react'
+import { parseSessionShareFromUrl, clearStorage, generateSessionShareUrl, type ShareSessionData } from './lib/url'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import './index.css'
 
 function App() {
   const { state, actions } = useAppState()
   const [showSearch, setShowSearch] = useState(false)
-  const [shareData, setShareData] = useState<ReturnType<typeof parseShareFromUrl>>(null)
+  const [sessionShareData, setSessionShareData] = useState<ShareSessionData | null>(null)
   const { getExercise, fetchExercises, dbReady } = useExerciseDB()
 
   const activeDay = state.plan.days.find(d => d.name === state.session?.activeDay)
@@ -32,13 +32,17 @@ function App() {
     )
   }
 
-  // Check for share URL on mount
+  // Check for session share URL on mount
   useEffect(() => {
-    const data = parseShareFromUrl()
+    const data = parseSessionShareFromUrl()
     if (data) {
-      setShareData(data)
-      // Fetch exercises for the shared day
-      fetchExercises(data.day.exercises)
+      setSessionShareData(data)
+      // Fetch exercises for the shared session
+      const exIds = [...new Set(data.sets.map(s => s.exId))]
+      if (data.previousSession) {
+        data.previousSession.sets.forEach(s => exIds.push(s.exId))
+      }
+      fetchExercises([...new Set(exIds)])
     }
   }, [fetchExercises])
 
@@ -59,15 +63,65 @@ function App() {
     }
   }, [allExerciseIds, fetchExercises])
 
-  // Handle share day action
-  const handleShareDay = (dayName: string) => {
-    const day = state.plan.days.find(d => d.name === dayName)
-    if (!day) return
+  // Find previous comparable session for progress comparison
+  const findPreviousSession = useCallback((currentSession: Session): Session | null => {
+    const currentExIds = new Set(currentSession.sets.map(s => s.exId))
 
-    const shareUrl = generateShareUrl(day, state.restTimes, state.history)
+    // Parse history into sessions
+    const sessions: Session[] = []
+    let currentSets: typeof currentSession.sets = []
+    let sessionStart: number | null = null
+
+    for (const entry of state.history) {
+      if (isSetEntry(entry)) {
+        if (sessionStart === null) sessionStart = entry.ts
+        currentSets.push(entry)
+      } else if (entry.type === 'session-end') {
+        if (currentSets.length > 0 && sessionStart !== null) {
+          sessions.push({ sets: currentSets, endTs: entry.ts, startTs: sessionStart })
+        }
+        currentSets = []
+        sessionStart = null
+      }
+    }
+
+    // Find most recent completed session before current that shares 50%+ exercises
+    for (let i = sessions.length - 1; i >= 0; i--) {
+      const session = sessions[i]
+      if (session.endTs && session.endTs < currentSession.startTs) {
+        const sessionExIds = new Set(session.sets.map(s => s.exId))
+        const overlap = [...currentExIds].filter(id => sessionExIds.has(id))
+        if (overlap.length >= currentExIds.size * 0.5) {
+          return session
+        }
+      }
+    }
+    return null
+  }, [state.history])
+
+  // Handle share session action
+  const handleShareSession = useCallback((session: Session) => {
+    if (!session.endTs) return // Can't share in-progress sessions
+
+    // Determine session name from active day or date
+    const sessionName = state.session?.activeDay || new Date(session.startTs).toLocaleDateString(undefined, {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric'
+    })
+
+    // Find previous session for comparison
+    const previousSession = findPreviousSession(session)
+
+    const shareUrl = generateSessionShareUrl(
+      sessionName,
+      { sets: session.sets, startTs: session.startTs, endTs: session.endTs },
+      previousSession ? { sets: previousSession.sets, startTs: previousSession.startTs, endTs: previousSession.endTs! } : undefined
+    )
+
     navigator.clipboard.writeText(shareUrl)
     alert('Share link copied to clipboard!')
-  }
+  }, [state.session?.activeDay, findPreviousSession])
 
   // Handle clear storage
   const handleClearStorage = () => {
@@ -78,28 +132,26 @@ function App() {
     }
   }
 
-  // Exit share view
-  const handleExitShare = () => {
-    setShareData(null)
-    // Remove share param from URL
+  // Exit session share view
+  const handleExitSessionShare = () => {
+    setSessionShareData(null)
+    // Remove session param from URL
     window.history.replaceState(null, '', window.location.pathname + window.location.hash)
   }
 
   // Auto-select first day if we have days but no active day
   useEffect(() => {
-    if (!shareData && state.plan.days.length > 0 && !state.session?.activeDay) {
+    if (!sessionShareData && state.plan.days.length > 0 && !state.session?.activeDay) {
       actions.setActiveDay(state.plan.days[0].name)
     }
-  }, [shareData, state.plan.days, state.session?.activeDay, actions])
+  }, [sessionShareData, state.plan.days, state.session?.activeDay, actions])
 
-  // Show share view if we have share data
-  if (shareData) {
+  // Show session share view if we have session share data
+  if (sessionShareData) {
     return (
-      <ShareDayView
-        day={shareData.day}
-        restTimes={shareData.restTimes}
-        setPatterns={shareData.setPatterns || {}}
-        onBack={handleExitShare}
+      <ShareSessionView
+        sessionData={sessionShareData}
+        onBack={handleExitSessionShare}
       />
     )
   }
@@ -125,7 +177,6 @@ function App() {
         onMoveDay={actions.moveDay}
         showSearch={showSearch}
         onToggleSearch={() => setShowSearch(!showSearch)}
-        onShareDay={handleShareDay}
         onClearStorage={handleClearStorage}
       />
 
@@ -215,6 +266,7 @@ function App() {
             onResumeSession={actions.resumeSession}
             onDeleteSession={actions.deleteSession}
             onRemoveSet={actions.removeSet}
+            onShareSession={handleShareSession}
           />
         </div>
       )}

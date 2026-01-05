@@ -1,8 +1,10 @@
 // Compression utilities using fflate (deflate) with URL-safe base64 encoding
 import { deflateSync, inflateSync, strToU8, strFromU8 } from 'fflate'
 
-// Version prefix for new format
-const VERSION = '2'
+// Version prefixes for compression format
+// '2' = app state / day share (v2 schema)
+// '3' = session share (v3 schema)
+const DEFAULT_VERSION = '2'
 
 // Encode Uint8Array to URL-safe base64
 function toUrlSafeBase64(data: Uint8Array): string {
@@ -33,26 +35,32 @@ function fromUrlSafeBase64(str: string): Uint8Array {
 }
 
 // Compress data to URL-safe string with version prefix
-export function compress(data: unknown): string {
+export function compress(data: unknown, version: string = DEFAULT_VERSION): string {
   const json = JSON.stringify(data)
   const jsonBytes = strToU8(json)
   const compressed = deflateSync(jsonBytes, { level: 9 }) // max compression
-  return VERSION + toUrlSafeBase64(compressed)
+  return version + toUrlSafeBase64(compressed)
 }
 
-// Decompress URL-safe string back to data
+// Decompress URL-safe string back to data (supports v2 and v3 formats)
 export function decompress(encoded: string): unknown {
-  if (!encoded.startsWith(VERSION)) {
-    throw new Error(`Unknown compression version: ${encoded[0]}`)
+  const version = encoded[0]
+  if (version !== '2' && version !== '3') {
+    throw new Error(`Unknown compression version: ${version}`)
   }
-  const base64Data = encoded.slice(VERSION.length)
+  const base64Data = encoded.slice(1)
   const compressed = fromUrlSafeBase64(base64Data)
   const jsonBytes = inflateSync(compressed)
   const json = strFromU8(jsonBytes)
   return JSON.parse(json)
 }
 
-// Check if encoded string is v2 format
+// Check if encoded string is v2 format (app state or day share)
 export function isV2Format(encoded: string): boolean {
-  return encoded.startsWith(VERSION)
+  return encoded.startsWith('2')
+}
+
+// Check if encoded string is v3 format (session share)
+export function isV3Format(encoded: string): boolean {
+  return encoded.startsWith('3')
 }

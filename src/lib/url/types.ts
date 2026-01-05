@@ -54,6 +54,22 @@ export interface CompactShareData {
   p?: Record<string, CompactSetPattern[]>  // setPatterns
 }
 
+// Session share compact format (v3)
+export interface CompactShareSessionData {
+  v: 3  // schema version for session shares
+  n: string  // session name (day name or formatted date)
+  s: number  // startTs
+  e: number  // endTs
+  t: CompactSetEntry[]  // sets
+  p?: CompactPreviousSession  // previous session for comparison
+}
+
+export interface CompactPreviousSession {
+  s: number  // startTs
+  e: number  // endTs
+  t: CompactSetEntry[]  // sets
+}
+
 // Difficulty mapping
 export const DIFFICULTY_TO_NUM = {
   easy: 0,
