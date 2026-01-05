@@ -126,8 +126,8 @@ export function loadFromUrl(): AppState {
   // Try URL first
   const urlState = urlToState(window.location.hash)
   if (urlState) {
-    // Also save to localStorage to keep them in sync
-    saveToStorage(urlState)
+    // Rewrite URL to v2 format and save to localStorage
+    syncToUrl(urlState)
     return urlState
   }
 
