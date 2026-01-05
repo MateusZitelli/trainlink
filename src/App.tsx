@@ -52,7 +52,7 @@ function App() {
     const day = state.plan.days.find(d => d.name === dayName)
     if (!day) return
 
-    const shareUrl = generateShareUrl(day, state.history)
+    const shareUrl = generateShareUrl(day, state.restTimes)
     navigator.clipboard.writeText(shareUrl)
     alert('Share link copied to clipboard!')
   }
@@ -85,7 +85,7 @@ function App() {
     return (
       <ShareDayView
         day={shareData.day}
-        history={shareData.history}
+        restTimes={shareData.restTimes}
         onBack={handleExitShare}
       />
     )

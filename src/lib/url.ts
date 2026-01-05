@@ -4,10 +4,10 @@ import { INITIAL_STATE } from './state'
 
 const STORAGE_KEY = 'trainlink-state'
 
-// Share data structure (minimal for URL size)
+// Share data structure - contains workout plan (not results)
 export interface ShareData {
   day: Day
-  history: HistoryEntry[]
+  restTimes: Record<string, number>  // Rest time per exercise
 }
 
 // Encode share data to URL-safe string
@@ -28,8 +28,15 @@ export function decodeShareData(encoded: string): ShareData | null {
 }
 
 // Generate share URL for a day
-export function generateShareUrl(day: Day, history: HistoryEntry[]): string {
-  const data: ShareData = { day, history }
+export function generateShareUrl(day: Day, restTimes: Record<string, number>): string {
+  // Only include rest times for exercises in this day
+  const dayRestTimes: Record<string, number> = {}
+  for (const exId of day.exercises) {
+    if (restTimes[exId] !== undefined) {
+      dayRestTimes[exId] = restTimes[exId]
+    }
+  }
+  const data: ShareData = { day, restTimes: dayRestTimes }
   const encoded = encodeShareData(data)
   return `${window.location.origin}${window.location.pathname}?share=${encoded}`
 }
