@@ -1,6 +1,9 @@
 import lzString from 'lz-string'
-import type { AppState, Day, HistoryEntry } from './state'
+import type { AppState, Day } from './state'
 import { INITIAL_STATE } from './state'
+import { compress, decompress, isV2Format } from './url/compress'
+import { toCompact, fromCompact, toCompactShare, fromCompactShare } from './url/schema'
+import type { CompactAppState, CompactShareData } from './url/types'
 
 const STORAGE_KEY = 'trainlink-state'
 
@@ -10,15 +13,20 @@ export interface ShareData {
   restTimes: Record<string, number>  // Rest time per exercise
 }
 
-// Encode share data to URL-safe string
+// Encode share data to URL-safe string (v2 format with fflate compression)
 export function encodeShareData(data: ShareData): string {
-  const json = JSON.stringify(data)
-  return lzString.compressToEncodedURIComponent(json)
+  const compact = toCompactShare(data)
+  return compress(compact)
 }
 
-// Decode share data from URL
+// Decode share data from URL (handles both v1 lz-string and v2 fflate formats)
 export function decodeShareData(encoded: string): ShareData | null {
   try {
+    if (isV2Format(encoded)) {
+      const compact = decompress(encoded) as CompactShareData
+      return fromCompactShare(compact)
+    }
+    // Legacy v1 format: lz-string
     const json = lzString.decompressFromEncodedURIComponent(encoded)
     if (!json) return null
     return JSON.parse(json) as ShareData
@@ -49,18 +57,27 @@ export function parseShareFromUrl(): ShareData | null {
   return decodeShareData(shareParam)
 }
 
+// Convert state to URL hash (v2 format with fflate compression)
 export function stateToUrl(state: AppState): string {
-  const json = JSON.stringify(state)
-  const compressed = lzString.compressToEncodedURIComponent(json)
+  const compact = toCompact(state)
+  const compressed = compress(compact)
   return '#' + compressed
 }
 
+// Parse URL hash to state (handles both v1 lz-string and v2 fflate formats)
 export function urlToState(hash: string): AppState | null {
   if (!hash || hash === '#') return null
 
   try {
-    const compressed = hash.slice(1) // Remove #
-    const json = lzString.decompressFromEncodedURIComponent(compressed)
+    const encoded = hash.slice(1) // Remove #
+
+    if (isV2Format(encoded)) {
+      const compact = decompress(encoded) as CompactAppState
+      return fromCompact(compact)
+    }
+
+    // Legacy v1 format: lz-string
+    const json = lzString.decompressFromEncodedURIComponent(encoded)
     if (!json) return null
     return JSON.parse(json) as AppState
   } catch {
