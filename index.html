@@ -13,7 +13,35 @@
     <title>TrainLink</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Loading screen - replaced when React mounts -->
+      <div id="loading" style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background: #000;
+        color: #fff;
+        font-family: system-ui, -apple-system, sans-serif;
+      ">
+        <div style="font-size: 48px; margin-bottom: 16px;">💪</div>
+        <div style="font-size: 24px; font-weight: bold; margin-bottom: 8px;">TrainLink</div>
+        <div style="
+          width: 40px;
+          height: 40px;
+          border: 3px solid rgba(255,255,255,0.2);
+          border-top-color: #fff;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        "></div>
+        <style>
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        </style>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
