@@ -11,8 +11,8 @@ interface DayTabsProps {
   onMoveDay: (fromIndex: number, toIndex: number) => void
   showSearch: boolean
   onToggleSearch: () => void
-  isDayCollapsed: boolean
-  onToggleCollapse: () => void
+  onShareDay: (dayName: string) => void
+  onClearStorage: () => void
 }
 
 export function DayTabs({
@@ -25,12 +25,13 @@ export function DayTabs({
   onMoveDay,
   showSearch,
   onToggleSearch,
-  isDayCollapsed,
-  onToggleCollapse,
+  onShareDay,
+  onClearStorage,
 }: DayTabsProps) {
   const [contextMenu, setContextMenu] = useState<{ name: string; x: number; y: number } | null>(null)
   const [editingDay, setEditingDay] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
+  const [showSettings, setShowSettings] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const buttonRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
@@ -67,6 +68,11 @@ export function DayTabs({
     if (confirm(`Delete "${name}"?`)) {
       onDeleteDay(name)
     }
+    setContextMenu(null)
+  }
+
+  const handleShare = (name: string) => {
+    onShareDay(name)
     setContextMenu(null)
   }
 
@@ -120,9 +126,6 @@ export function DayTabs({
                 onClick={() => {
                   if (contextMenu) {
                     setContextMenu(null)
-                  } else if (activeDay === day.name) {
-                    // Clicking the active day toggles collapse
-                    onToggleCollapse()
                   } else {
                     onSelectDay(day.name)
                   }
@@ -182,45 +185,56 @@ export function DayTabs({
           </svg>
         </button>
 
-        {/* Collapse/Expand Toggle - only show when there's an active day */}
-        {activeDay && !showSearch && (
-          <button
-            onClick={onToggleCollapse}
-            className="px-3 py-2 text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text)]"
-            aria-label={isDayCollapsed ? 'Expand day view' : 'Collapse day view'}
+        {/* Settings button */}
+        <button
+          onClick={() => setShowSettings(!showSettings)}
+          className={`px-3 py-2 text-sm font-medium ${
+            showSettings
+              ? 'text-[var(--text)]'
+              : 'text-[var(--text-muted)]'
+          }`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            {isDayCollapsed ? (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="18 15 12 9 6 15" />
-              </svg>
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            )}
-          </button>
-        )}
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
       </div>
+
+      {/* Settings dropdown */}
+      {showSettings && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setShowSettings(false)}
+          />
+          <div className="absolute right-4 top-12 bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-lg z-50 min-w-[180px]">
+            <button
+              onClick={() => {
+                onClearStorage()
+                setShowSettings(false)
+              }}
+              className="w-full px-4 py-3 text-left text-sm text-red-500 hover:bg-[var(--bg)] flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+              Clear All Data
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Context Menu - Fixed position */}
       {contextMenu && (
@@ -230,13 +244,25 @@ export function DayTabs({
             onClick={() => setContextMenu(null)}
           />
           <div
-            className="fixed bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-lg z-50 min-w-[140px]"
+            className="fixed bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-lg z-50 min-w-[160px]"
             style={{ left: contextMenu.x, top: contextMenu.y }}
           >
             {(() => {
               const index = days.findIndex(d => d.name === contextMenu.name)
               return (
                 <>
+                  {/* Share option */}
+                  <button
+                    onClick={() => handleShare(contextMenu.name)}
+                    className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg)] flex items-center gap-2"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                      <polyline points="16 6 12 2 8 6" />
+                      <line x1="12" y1="2" x2="12" y2="15" />
+                    </svg>
+                    Share Day
+                  </button>
                   {index > 0 && (
                     <button
                       onClick={() => {

@@ -5,18 +5,30 @@ import { RestTimer } from './components/RestTimer'
 import { SearchView } from './components/SearchView'
 import { SessionLog } from './components/SessionLog'
 import { QuickExercise } from './components/QuickExercise'
+import { ShareDayView } from './components/ShareDayView'
 import { useExerciseDB } from './hooks/useExerciseDB'
 import { isSetEntry } from './lib/state'
+import { parseShareFromUrl, clearStorage, generateShareUrl } from './lib/url'
 import { useState, useMemo, useEffect } from 'react'
 import './index.css'
 
 function App() {
   const { state, actions } = useAppState()
   const [showSearch, setShowSearch] = useState(false)
-  const [isDayCollapsed, setIsDayCollapsed] = useState(false)
+  const [shareData, setShareData] = useState<ReturnType<typeof parseShareFromUrl>>(null)
   const { getExercise, fetchExercises } = useExerciseDB()
 
   const activeDay = state.plan.days.find(d => d.name === state.session?.activeDay)
+
+  // Check for share URL on mount
+  useEffect(() => {
+    const data = parseShareFromUrl()
+    if (data) {
+      setShareData(data)
+      // Fetch exercises for the shared day
+      fetchExercises(data.day.exercises)
+    }
+  }, [fetchExercises])
 
   // Collect all exercise IDs from plan and history
   const allExerciseIds = useMemo(() => {
@@ -34,6 +46,50 @@ function App() {
       fetchExercises(allExerciseIds)
     }
   }, [allExerciseIds, fetchExercises])
+
+  // Handle share day action
+  const handleShareDay = (dayName: string) => {
+    const day = state.plan.days.find(d => d.name === dayName)
+    if (!day) return
+
+    const shareUrl = generateShareUrl(day, state.history)
+    navigator.clipboard.writeText(shareUrl)
+    alert('Share link copied to clipboard!')
+  }
+
+  // Handle clear storage
+  const handleClearStorage = () => {
+    if (confirm('Clear all saved data? This will reset the app to its initial state.')) {
+      clearStorage()
+      window.location.hash = ''
+      window.location.reload()
+    }
+  }
+
+  // Exit share view
+  const handleExitShare = () => {
+    setShareData(null)
+    // Remove share param from URL
+    window.history.replaceState(null, '', window.location.pathname + window.location.hash)
+  }
+
+  // Show share view if we have share data
+  if (shareData) {
+    return (
+      <ShareDayView
+        day={shareData.day}
+        history={shareData.history}
+        onBack={handleExitShare}
+      />
+    )
+  }
+
+  // Auto-select first day if we have days but no active day
+  useEffect(() => {
+    if (state.plan.days.length > 0 && !state.session?.activeDay) {
+      actions.setActiveDay(state.plan.days[0].name)
+    }
+  }, [state.plan.days, state.session?.activeDay, actions])
 
   return (
     <div className="h-full flex flex-col bg-[var(--bg)]">
@@ -56,8 +112,8 @@ function App() {
         onMoveDay={actions.moveDay}
         showSearch={showSearch}
         onToggleSearch={() => setShowSearch(!showSearch)}
-        isDayCollapsed={isDayCollapsed}
-        onToggleCollapse={() => setIsDayCollapsed(!isDayCollapsed)}
+        onShareDay={handleShareDay}
+        onClearStorage={handleClearStorage}
       />
 
       {/* Main Content */}
@@ -75,13 +131,8 @@ function App() {
         ) : (() => {
           const currentExId = state.session?.currentExId
 
-          // If there's an active day, show ExerciseList (handles both planned and unplanned exercises)
+          // If there's an active day, always show ExerciseList (no collapse)
           if (activeDay) {
-            // Show collapsed view if requested
-            if (isDayCollapsed) {
-              return <div className="pt-4 pb-[60vh]" />
-            }
-
             return (
               <div className="pt-4 pb-[60vh]">
                 <ExerciseList
@@ -117,7 +168,27 @@ function App() {
             )
           }
 
-          return <div className="pt-4 pb-[60vh]" />
+          // Empty state - prompt to add a day
+          return (
+            <div className="flex flex-col items-center justify-center h-full text-center p-8">
+              <div className="text-6xl mb-4">💪</div>
+              <h2 className="text-xl font-bold mb-2">Welcome to TrainLink</h2>
+              <p className="text-[var(--text-muted)] mb-6">
+                Create your first training day to get started
+              </p>
+              <button
+                onClick={() => {
+                  const name = prompt('Day name (e.g., Push, Pull, Legs):')
+                  if (name?.trim()) {
+                    actions.addDay(name.trim())
+                  }
+                }}
+                className="px-6 py-3 bg-[var(--text)] text-[var(--bg)] rounded-lg font-medium"
+              >
+                + Add Training Day
+              </button>
+            </div>
+          )
         })()}
       </div>
 

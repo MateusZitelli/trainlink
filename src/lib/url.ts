@@ -1,8 +1,46 @@
 import lzString from 'lz-string'
-import type { AppState } from './state'
+import type { AppState, Day, HistoryEntry } from './state'
 import { INITIAL_STATE } from './state'
 
 const STORAGE_KEY = 'trainlink-state'
+
+// Share data structure (minimal for URL size)
+export interface ShareData {
+  day: Day
+  history: HistoryEntry[]
+}
+
+// Encode share data to URL-safe string
+export function encodeShareData(data: ShareData): string {
+  const json = JSON.stringify(data)
+  return lzString.compressToEncodedURIComponent(json)
+}
+
+// Decode share data from URL
+export function decodeShareData(encoded: string): ShareData | null {
+  try {
+    const json = lzString.decompressFromEncodedURIComponent(encoded)
+    if (!json) return null
+    return JSON.parse(json) as ShareData
+  } catch {
+    return null
+  }
+}
+
+// Generate share URL for a day
+export function generateShareUrl(day: Day, history: HistoryEntry[]): string {
+  const data: ShareData = { day, history }
+  const encoded = encodeShareData(data)
+  return `${window.location.origin}${window.location.pathname}?share=${encoded}`
+}
+
+// Parse current URL for share data
+export function parseShareFromUrl(): ShareData | null {
+  const params = new URLSearchParams(window.location.search)
+  const shareParam = params.get('share')
+  if (!shareParam) return null
+  return decodeShareData(shareParam)
+}
 
 export function stateToUrl(state: AppState): string {
   const json = JSON.stringify(state)
@@ -41,6 +79,15 @@ export function loadFromStorage(): AppState | null {
     return JSON.parse(json) as AppState
   } catch {
     return null
+  }
+}
+
+// Clear localStorage
+export function clearStorage(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // Ignore errors
   }
 }
 

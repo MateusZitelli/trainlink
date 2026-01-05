@@ -21,13 +21,20 @@ export function ExerciseImage({
 }: ExerciseImageProps) {
   const sizeClass = sizeClasses[size]
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (onImageClick) {
+      e.stopPropagation()
+      onImageClick()
+    }
+  }
+
   if (imageUrls.length > 0) {
     return (
       <img
         src={imageUrls[imageIndex]}
         alt={name}
         className={`${sizeClass} rounded-lg object-cover bg-[var(--bg)] ${onImageClick ? 'cursor-zoom-in' : ''}`}
-        onClick={onImageClick}
+        onClick={handleClick}
       />
     )
   }
