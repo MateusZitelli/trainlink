@@ -10,6 +10,25 @@ export type { ShareSessionData } from './url/schema'
 
 const STORAGE_KEY = 'trainlink-state'
 
+// Validate that parsed data has the required AppState structure
+function isValidAppState(data: unknown): data is AppState {
+  if (!data || typeof data !== 'object') return false
+  const obj = data as Record<string, unknown>
+
+  // Validate plan.days exists and is an array
+  if (!obj.plan || typeof obj.plan !== 'object') return false
+  const plan = obj.plan as Record<string, unknown>
+  if (!Array.isArray(plan.days)) return false
+
+  // Validate history is an array
+  if (!Array.isArray(obj.history)) return false
+
+  // Validate restTimes is an object (or missing, which is ok)
+  if (obj.restTimes !== undefined && (typeof obj.restTimes !== 'object' || obj.restTimes === null)) return false
+
+  return true
+}
+
 // Set pattern from last session
 export interface SetPattern {
   kg: number
@@ -176,7 +195,13 @@ export function loadFromStorage(): AppState | null {
   try {
     const json = localStorage.getItem(STORAGE_KEY)
     if (!json) return null
-    return JSON.parse(json) as AppState
+    const parsed = JSON.parse(json)
+    if (!isValidAppState(parsed)) {
+      // Clear corrupted data to prevent repeated issues
+      localStorage.removeItem(STORAGE_KEY)
+      return null
+    }
+    return parsed
   } catch {
     return null
   }
