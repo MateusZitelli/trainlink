@@ -20,18 +20,6 @@ function App() {
 
   const activeDay = state.plan.days.find(d => d.name === state.session?.activeDay)
 
-  // Show loading while exercise DB initializes (only if we have exercises to load)
-  const needsExercises = state.plan.days.some(d => d.exercises.length > 0) || state.history.length > 0
-  if (!dbReady && needsExercises) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center bg-[var(--bg)]">
-        <div className="text-5xl mb-4">💪</div>
-        <div className="text-xl font-bold mb-2">TrainLink</div>
-        <div className="w-8 h-8 border-2 border-[var(--border)] border-t-[var(--text)] rounded-full animate-spin" />
-      </div>
-    )
-  }
-
   // Check for session share URL on mount
   useEffect(() => {
     const data = parseSessionShareFromUrl()
@@ -145,6 +133,18 @@ function App() {
       actions.setActiveDay(state.plan.days[0].name)
     }
   }, [sessionShareData, state.plan.days, state.session?.activeDay, actions])
+
+  // Show loading while exercise DB initializes (only if we have exercises to load)
+  const needsExercises = state.plan.days.some(d => d.exercises.length > 0) || state.history.length > 0
+  if (!dbReady && needsExercises) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center bg-[var(--bg)]">
+        <div className="text-5xl mb-4">💪</div>
+        <div className="text-xl font-bold mb-2">TrainLink</div>
+        <div className="w-8 h-8 border-2 border-[var(--border)] border-t-[var(--text)] rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   // Show session share view if we have session share data
   if (sessionShareData) {
