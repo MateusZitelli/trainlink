@@ -8,7 +8,7 @@ import { QuickExercise } from './components/QuickExercise'
 import { ShareSessionView } from './components/ShareSessionView'
 import { useExerciseDB } from './hooks/useExerciseDB'
 import { isSetEntry } from './lib/state'
-import { parseSessionShareFromUrl, clearStorage, generateSessionShareUrl, type ShareSessionData } from './lib/url'
+import { parseSessionShareFromUrl, clearStorage, generateSessionShareUrl, loadMetadata, type ShareSessionData } from './lib/url'
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import './index.css'
 
@@ -16,9 +16,16 @@ function App() {
   const { state, actions } = useAppState()
   const [showSearch, setShowSearch] = useState(false)
   const [sessionShareData, setSessionShareData] = useState<ShareSessionData | null>(null)
+  const [urlCutoffTs, setUrlCutoffTs] = useState<number | null>(null)
   const { getExercise, fetchExercises, dbReady } = useExerciseDB()
 
   const activeDay = state.plan.days.find(d => d.name === state.session?.activeDay)
+
+  // Load URL cutoff metadata when history changes
+  useEffect(() => {
+    const meta = loadMetadata()
+    setUrlCutoffTs(meta?.urlCutoffTs ?? null)
+  }, [state.history.length])
 
   // Check for session share URL on mount
   useEffect(() => {
@@ -267,6 +274,7 @@ function App() {
             onDeleteSession={actions.deleteSession}
             onRemoveSet={actions.removeSet}
             onShareSession={handleShareSession}
+            urlCutoffTs={urlCutoffTs}
           />
         </div>
       )}

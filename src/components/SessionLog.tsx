@@ -18,6 +18,7 @@ interface SessionLogProps {
   onDeleteSession: (sessionEndTs: number) => void
   onRemoveSet: (ts: number) => void
   onShareSession?: (session: Session) => void
+  urlCutoffTs?: number | null  // Oldest timestamp in URL, null if all sessions fit
 }
 
 export interface Session {
@@ -164,11 +165,18 @@ export function SessionLog({
   onDeleteSession,
   onRemoveSet,
   onShareSession,
+  urlCutoffTs,
 }: SessionLogProps) {
   const [expandedSessionIdx, setExpandedSessionIdx] = useState<number | null>(0)
   const [selectedTs, setSelectedTs] = useState<number | null>(null)
 
   const sessions = useMemo(() => parseSessions(history), [history])
+
+  // Check if a session is shareable (included in URL)
+  const isShareable = (session: Session): boolean => {
+    if (urlCutoffTs === null || urlCutoffTs === undefined) return true  // All sessions in URL
+    return session.startTs >= urlCutoffTs
+  }
 
   if (sessions.length === 0) return null
 
@@ -340,6 +348,14 @@ export function SessionLog({
                     {isActive && (
                       <span className="text-xs bg-[var(--success)] text-white px-1.5 py-0.5 rounded">Active</span>
                     )}
+                    {!isActive && !isShareable(session) && (
+                      <span
+                        className="text-xs bg-[var(--surface)] text-[var(--text-muted)] px-1.5 py-0.5 rounded"
+                        title="This session is stored locally and cannot be shared via URL"
+                      >
+                        Local
+                      </span>
+                    )}
                   </div>
                   <div className="text-sm text-[var(--text-muted)]">
                     {uniqueExercises} exercise{uniqueExercises !== 1 ? 's' : ''} · {totalSets} set{totalSets !== 1 ? 's' : ''} · {Math.round(totalVolume).toLocaleString()}kg · {formatDuration(session.startTs, session.endTs)}
@@ -365,10 +381,17 @@ export function SessionLog({
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          onShareSession(session)
+                          if (isShareable(session)) {
+                            onShareSession(session)
+                          }
                         }}
-                        className="p-2 text-[var(--text-muted)] bg-[var(--surface)] rounded-lg hover:text-[var(--text)] hover:bg-[var(--border)]"
-                        title="Share session"
+                        disabled={!isShareable(session)}
+                        className={`p-2 bg-[var(--surface)] rounded-lg ${
+                          isShareable(session)
+                            ? 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--border)]'
+                            : 'text-[var(--text-muted)] opacity-50 cursor-not-allowed'
+                        }`}
+                        title={isShareable(session) ? 'Share session' : 'Session stored locally only'}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />

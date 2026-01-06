@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { AppState } from './state'
 import { INITIAL_STATE } from './state'
-import { urlToState, stateToUrl, saveToStorage, loadFromStorage, syncToUrl } from './url'
+import { urlToState, loadFromStorage, syncToUrl } from './url'
 import { isV2Format } from './url/compress'
 
 // Module-level state
@@ -64,9 +64,7 @@ function emitChange(): void {
 export function updateStateFn(updater: (prev: AppState) => AppState): void {
   const current = getSnapshot()
   const newState = updater(current)
-  const url = stateToUrl(newState)
-  window.history.replaceState(null, '', url)
-  saveToStorage(newState) // PWA backup
+  syncToUrl(newState)  // Handles truncation + both storages
   emitChange()
 }
 
