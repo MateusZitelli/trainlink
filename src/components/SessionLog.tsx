@@ -43,13 +43,6 @@ interface CircuitGroup {
   isCircuit: boolean
 }
 
-interface FlatCycle {
-  circuit: CircuitGroup
-  session: Session
-  sessionIdx: number
-  circuitIdxInSession: number
-  totalCircuitsInSession: number
-}
 
 // Detect circuits from a sequence of sets
 function detectCircuits(sets: SetEntry[]): CircuitGroup[] {
@@ -201,26 +194,54 @@ export function SessionLog({
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
-  // Flatten all cycles from all sessions into one list (reversed - newest first)
-  const flatCycles = useMemo(() => {
-    const cycles: FlatCycle[] = []
+  // Flatten all cycles from all sessions into one list with headers (reversed - newest first)
+  interface FlatItem {
+    type: 'header' | 'cycle'
+    session: Session
+    sessionIdx: number
+    circuit?: CircuitGroup
+    circuitIdxInSession?: number
+    totalCircuitsInSession?: number
+    isFirstHeader: boolean
+  }
+
+  const flatItems = useMemo(() => {
+    const items: FlatItem[] = []
     const reversedSessions = [...sessions].reverse()
 
     reversedSessions.forEach((session, reversedIdx) => {
       const sessionIdx = sessions.length - 1 - reversedIdx
       const circuits = detectCircuits(session.sets)
+
+      // Add header for this session
+      items.push({
+        type: 'header',
+        session,
+        sessionIdx,
+        isFirstHeader: items.length === 0,
+      })
+
+      // Add cycles for this session
       circuits.forEach((circuit, circuitIdxInSession) => {
-        cycles.push({
+        items.push({
+          type: 'cycle',
           circuit,
           session,
           sessionIdx,
           circuitIdxInSession,
           totalCircuitsInSession: circuits.length,
+          isFirstHeader: false,
         })
       })
     })
-    return cycles
+    return items
   }, [sessions])
+
+  // Get only cycles for drag handling
+  const flatCycles = useMemo(() =>
+    flatItems.filter((item): item is FlatItem & { type: 'cycle'; circuit: CircuitGroup } => item.type === 'cycle'),
+    [flatItems]
+  )
 
   const isShareable = (session: Session): boolean => {
     if (urlCutoffTs === null || urlCutoffTs === undefined) return true
@@ -296,60 +317,63 @@ export function SessionLog({
     }
   }, [editingTs, selectedTs])
 
-  // Drag and drop handler for flat list
+  // Drag and drop handler for flat list (with headers interleaved)
   const handleDragEnd = useCallback((result: DropResult) => {
     const { source, destination } = result
 
     if (!destination) return
     if (source.index === destination.index) return
 
-    const movedCycle = flatCycles[source.index]
-    if (!movedCycle) return
+    const sourceItem = flatItems[source.index]
+    if (!sourceItem || sourceItem.type !== 'cycle') return
 
-    const cycleTimestamps = movedCycle.circuit.rounds.flat().map(s => s.ts)
+    const cycleTimestamps = sourceItem.circuit!.rounds.flat().map(s => s.ts)
 
-    // Determine target session and position based on destination index
+    // Find the target - skip headers when determining position
+    // Count how many cycles come before the destination index
+    let cycleCountBeforeDest = 0
+    for (let i = 0; i < destination.index; i++) {
+      if (flatItems[i].type === 'cycle') cycleCountBeforeDest++
+    }
+
+    // Determine target session and position
     let targetSession: Session
     let targetSetIndex: number
 
-    if (destination.index === 0) {
-      // Dropped at very beginning - goes to first displayed session (newest)
+    if (cycleCountBeforeDest === 0) {
+      // Dropped at very beginning
       targetSession = flatCycles[0]?.session ?? sessions[sessions.length - 1]
       targetSetIndex = 0
-    } else if (destination.index >= flatCycles.length) {
+    } else if (cycleCountBeforeDest >= flatCycles.length) {
       // Dropped at the end
       const lastCycle = flatCycles[flatCycles.length - 1]
       targetSession = lastCycle.session
-      // Position after all sets in that session
       targetSetIndex = lastCycle.session.sets.length
     } else {
       // Find the cycle at the destination position
-      const cycleAtDest = flatCycles[destination.index]
+      const cycleAtDest = flatCycles[cycleCountBeforeDest]
       targetSession = cycleAtDest.session
 
       // Calculate set index within the target session
-      // Count sets in all circuits before this one in the session
       const circuitsInSession = detectCircuits(targetSession.sets)
       targetSetIndex = 0
-      for (let i = 0; i < cycleAtDest.circuitIdxInSession; i++) {
+      for (let i = 0; i < (cycleAtDest.circuitIdxInSession ?? 0); i++) {
         targetSetIndex += circuitsInSession[i].rounds.flat().length
       }
     }
 
-    const sourceSession = movedCycle.session
+    const sourceSession = sourceItem.session
 
     if (sourceSession === targetSession) {
-      // Within-session reorder
       if (onMoveCycleInSession) {
         onMoveCycleInSession(cycleTimestamps, targetSetIndex, targetSession.endTs)
       }
     } else {
-      // Cross-session move
       if (onMoveCycleToSession) {
         onMoveCycleToSession(cycleTimestamps, targetSession.endTs)
       }
     }
-  }, [flatCycles, sessions, onMoveCycleInSession, onMoveCycleToSession])
+  }, [flatItems, flatCycles, sessions, onMoveCycleInSession, onMoveCycleToSession])
 
   // Handle inter-cycle rest editing
   const handleRestClick = useCallback((set: SetEntry, e: React.MouseEvent) => {
@@ -714,36 +738,50 @@ export function SessionLog({
                 {...provided.droppableProps}
                 className="pb-3"
               >
-                {flatCycles.map((item, idx) => {
-                  const prevItem = flatCycles[idx - 1]
-                  const isNewDay = !prevItem || prevItem.session !== item.session
-                  const isFirstCycle = idx === 0
-
-                  return (
-                    <div key={`cycle-${idx}`}>
-                      {isNewDay && renderDayHeader(item.session, isFirstCycle)}
+                {flatItems.map((item, idx) => {
+                  if (item.type === 'header') {
+                    return (
                       <Draggable
-                        draggableId={`cycle-${idx}`}
+                        key={`header-${item.sessionIdx}`}
+                        draggableId={`header-${item.sessionIdx}`}
                         index={idx}
-                        isDragDisabled={editingTs !== null || editingRestTs !== null}
+                        isDragDisabled={true}
                       >
-                        {(dragProvided, dragSnapshot) => (
+                        {(dragProvided) => (
                           <div
                             ref={dragProvided.innerRef}
                             {...dragProvided.draggableProps}
-                            {...dragProvided.dragHandleProps}
-                            className={`px-4 pt-2 ${dragSnapshot.isDragging ? 'opacity-90 shadow-2xl z-50 bg-[var(--bg)]' : ''}`}
                           >
-                            {renderCycleCard(
-                              item.circuit,
-                              item.circuitIdxInSession,
-                              item.totalCircuitsInSession,
-                              dragSnapshot.isDragging
-                            )}
+                            {renderDayHeader(item.session, item.isFirstHeader)}
                           </div>
                         )}
                       </Draggable>
-                    </div>
+                    )
+                  }
+
+                  return (
+                    <Draggable
+                      key={`cycle-${idx}`}
+                      draggableId={`cycle-${idx}`}
+                      index={idx}
+                      isDragDisabled={editingTs !== null || editingRestTs !== null}
+                    >
+                      {(dragProvided, dragSnapshot) => (
+                        <div
+                          ref={dragProvided.innerRef}
+                          {...dragProvided.draggableProps}
+                          {...dragProvided.dragHandleProps}
+                          className={`px-4 pt-2 ${dragSnapshot.isDragging ? 'opacity-90 shadow-2xl z-50 bg-[var(--bg)]' : ''}`}
+                        >
+                          {renderCycleCard(
+                            item.circuit!,
+                            item.circuitIdxInSession!,
+                            item.totalCircuitsInSession!,
+                            dragSnapshot.isDragging
+                          )}
+                        </div>
+                      )}
+                    </Draggable>
                   )
                 })}
                 {provided.placeholder}
