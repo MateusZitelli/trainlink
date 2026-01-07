@@ -601,47 +601,42 @@ export function SessionLog({
             ref={dropProvided.innerRef}
             {...dropProvided.droppableProps}
             data-testid="session-content"
-            className={`transition-all ${
-              isExpanded
-                ? 'px-4 pb-3'
-                : isDragActive
-                  ? 'px-4 py-2'
-                  : 'h-0 overflow-hidden'
+            className={`transition-colors ${
+              isExpanded ? 'px-4 pb-3' : 'px-4 py-1'
             } ${dropSnapshot.isDraggingOver ? 'bg-blue-500/10' : ''}`}
             onClick={handleClickOutside}
           >
-            {isExpanded && (
-              <div className="flex flex-col gap-2">
-                {circuits.map((circuit, circuitIdx) => (
-                  <Draggable
-                    key={`cycle-${sessionEndTs}-${circuitIdx}`}
-                    draggableId={`cycle-${sessionEndTs}-${circuitIdx}`}
-                    index={circuitIdx}
-                    isDragDisabled={editingTs !== null || editingRestTs !== null}
+            {/* Expanded: show cycles with pt-2 spacing (inside ref for correct placeholder) */}
+            {isExpanded && circuits.map((circuit, circuitIdx) => (
+              <Draggable
+                key={`cycle-${sessionEndTs}-${circuitIdx}`}
+                draggableId={`cycle-${sessionEndTs}-${circuitIdx}`}
+                index={circuitIdx}
+                isDragDisabled={editingTs !== null || editingRestTs !== null}
+              >
+                {(provided, snapshot) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                    className={`${circuitIdx > 0 ? 'pt-2' : ''} ${snapshot.isDragging ? 'opacity-90 shadow-2xl z-50' : ''}`}
                   >
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                        className={snapshot.isDragging ? 'opacity-90 shadow-2xl z-50' : ''}
-                      >
-                        {renderCycleCard(circuit, circuitIdx, circuits.length, snapshot.isDragging)}
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
-              </div>
-            )}
+                    {renderCycleCard(circuit, circuitIdx, circuits.length, snapshot.isDragging)}
+                  </div>
+                )}
+              </Draggable>
+            ))}
 
-            {/* Drop zone for collapsed sessions - visible during drag */}
-            {!isExpanded && (isDragActive || dropSnapshot.isDraggingOver) && (
-              <div className={`text-center text-sm rounded-lg transition-all ${
+            {/* Collapsed: ALWAYS render drop zone with height, style changes during drag */}
+            {!isExpanded && (
+              <div className={`text-center text-xs rounded transition-all ${
                 dropSnapshot.isDraggingOver
-                  ? 'py-4 text-blue-500 border-2 border-dashed border-blue-500/30'
-                  : 'py-1 text-[var(--text-muted)] border border-dashed border-[var(--border)]'
+                  ? 'py-3 text-blue-500 border-2 border-dashed border-blue-500/30 bg-blue-500/5'
+                  : isDragActive
+                    ? 'py-1 text-[var(--text-muted)] border border-dashed border-[var(--border)]'
+                    : 'py-0.5 text-[var(--text-muted)]/50'
               }`}>
-                {dropSnapshot.isDraggingOver ? 'Drop here' : 'Drop to add'}
+                {dropSnapshot.isDraggingOver ? 'Drop here' : isDragActive ? 'Drop to add' : '·'}
               </div>
             )}
 
