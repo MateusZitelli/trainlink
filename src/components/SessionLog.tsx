@@ -596,53 +596,56 @@ export function SessionLog({
 
     return (
       <Droppable droppableId={droppableId} type="CYCLE">
-        {(dropProvided, dropSnapshot) => (
-          <div
-            ref={dropProvided.innerRef}
-            {...dropProvided.droppableProps}
-            data-testid="session-content"
-            className={`transition-colors ${
-              isExpanded ? 'px-4 pb-3' : 'px-4 py-1'
-            } ${dropSnapshot.isDraggingOver ? 'bg-blue-500/10' : ''}`}
-            onClick={handleClickOutside}
-          >
-            {/* Expanded: show cycles with pt-2 spacing (inside ref for correct placeholder) */}
-            {isExpanded && circuits.map((circuit, circuitIdx) => (
-              <Draggable
-                key={`cycle-${sessionEndTs}-${circuitIdx}`}
-                draggableId={`cycle-${sessionEndTs}-${circuitIdx}`}
-                index={circuitIdx}
-                isDragDisabled={editingTs !== null || editingRestTs !== null}
-              >
-                {(provided, snapshot) => (
-                  <div
-                    ref={provided.innerRef}
-                    {...provided.draggableProps}
-                    {...provided.dragHandleProps}
-                    className={`${circuitIdx > 0 ? 'pt-2' : ''} ${snapshot.isDragging ? 'opacity-90 shadow-2xl z-50' : ''}`}
-                  >
-                    {renderCycleCard(circuit, circuitIdx, circuits.length, snapshot.isDragging)}
-                  </div>
-                )}
-              </Draggable>
-            ))}
+        {(dropProvided, dropSnapshot) => {
+          // Expand when explicitly expanded OR when dragging over a collapsed session
+          const showCycles = isExpanded || dropSnapshot.isDraggingOver
 
-            {/* Collapsed: ALWAYS render drop zone with height, style changes during drag */}
-            {!isExpanded && (
-              <div className={`text-center text-xs rounded transition-all ${
-                dropSnapshot.isDraggingOver
-                  ? 'py-3 text-blue-500 border-2 border-dashed border-blue-500/30 bg-blue-500/5'
-                  : isDragActive
+          return (
+            <div
+              ref={dropProvided.innerRef}
+              {...dropProvided.droppableProps}
+              data-testid="session-content"
+              className={`transition-colors ${
+                showCycles ? 'px-4 pb-3' : 'px-4 py-1'
+              } ${dropSnapshot.isDraggingOver ? 'bg-blue-500/10' : ''}`}
+              onClick={handleClickOutside}
+            >
+              {/* Show cycles when expanded OR when dragging over */}
+              {showCycles && circuits.map((circuit, circuitIdx) => (
+                <Draggable
+                  key={`cycle-${sessionEndTs}-${circuitIdx}`}
+                  draggableId={`cycle-${sessionEndTs}-${circuitIdx}`}
+                  index={circuitIdx}
+                  isDragDisabled={editingTs !== null || editingRestTs !== null}
+                >
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      className={`${circuitIdx > 0 ? 'pt-2' : ''} ${snapshot.isDragging ? 'opacity-90 shadow-2xl z-50' : ''}`}
+                    >
+                      {renderCycleCard(circuit, circuitIdx, circuits.length, snapshot.isDragging)}
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+
+              {/* Collapsed drop indicator - only when not showing cycles */}
+              {!showCycles && (
+                <div className={`text-center text-xs rounded transition-all ${
+                  isDragActive
                     ? 'py-1 text-[var(--text-muted)] border border-dashed border-[var(--border)]'
                     : 'py-0.5 text-[var(--text-muted)]/50'
-              }`}>
-                {dropSnapshot.isDraggingOver ? 'Drop here' : isDragActive ? 'Drop to add' : '·'}
-              </div>
-            )}
+                }`}>
+                  {isDragActive ? 'Drop to add' : '·'}
+                </div>
+              )}
 
-            {dropProvided.placeholder}
-          </div>
-        )}
+              {dropProvided.placeholder}
+            </div>
+          )
+        }}
       </Droppable>
     )
   }
