@@ -720,19 +720,22 @@ export function SessionLog({
                   const isFirstCycle = idx === 0
 
                   return (
-                    <div key={`cycle-${idx}`}>
-                      {isNewDay && renderDayHeader(item.session, isFirstCycle)}
-                      <Draggable
-                        draggableId={`cycle-${idx}`}
-                        index={idx}
-                        isDragDisabled={editingTs !== null || editingRestTs !== null}
-                      >
-                        {(dragProvided, dragSnapshot) => (
+                    <Draggable
+                      key={`cycle-${idx}`}
+                      draggableId={`cycle-${idx}`}
+                      index={idx}
+                      isDragDisabled={editingTs !== null || editingRestTs !== null}
+                    >
+                      {(dragProvided, dragSnapshot) => (
+                        <div
+                          ref={dragProvided.innerRef}
+                          {...dragProvided.draggableProps}
+                          className={dragSnapshot.isDragging ? 'opacity-90 shadow-2xl z-50' : ''}
+                        >
+                          {isNewDay && !dragSnapshot.isDragging && renderDayHeader(item.session, isFirstCycle)}
                           <div
-                            ref={dragProvided.innerRef}
-                            {...dragProvided.draggableProps}
                             {...dragProvided.dragHandleProps}
-                            className={`px-4 ${item.circuitIdxInSession > 0 ? 'pt-3' : 'pt-2'} ${dragSnapshot.isDragging ? 'opacity-90 shadow-2xl z-50' : ''}`}
+                            className={`px-4 ${item.circuitIdxInSession > 0 ? 'pt-3' : 'pt-2'}`}
                           >
                             {renderCycleCard(
                               item.circuit,
@@ -741,9 +744,9 @@ export function SessionLog({
                               dragSnapshot.isDragging
                             )}
                           </div>
-                        )}
-                      </Draggable>
-                    </div>
+                        </div>
+                      )}
+                    </Draggable>
                   )
                 })}
                 {provided.placeholder}
