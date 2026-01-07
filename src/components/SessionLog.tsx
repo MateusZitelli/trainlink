@@ -4,8 +4,6 @@ import {
   Droppable,
   Draggable,
   type DropResult,
-  type DraggableProvided,
-  type DraggableStateSnapshot,
 } from '@hello-pangea/dnd'
 import type { HistoryEntry, SetEntry, Difficulty } from '../lib/state'
 import { isSetEntry, isSessionEndMarker } from '../lib/state'
@@ -177,8 +175,6 @@ export function SessionLog({
   const [editValues, setEditValues] = useState({ kg: '', reps: '', rest: '' })
   const [editingRestTs, setEditingRestTs] = useState<number | null>(null)
   const [editRestValue, setEditRestValue] = useState('')
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragOverSessionIdx, setDragOverSessionIdx] = useState<number | null>(null)
 
   const sessions = useMemo(() => parseSessions(history), [history])
 
@@ -258,16 +254,8 @@ export function SessionLog({
     }
   }, [editingTs, selectedTs])
 
-  // Drag and drop handlers
-  const handleDragStart = useCallback(() => {
-    setIsDragging(true)
-    setDragOverSessionIdx(null)
-  }, [])
-
+  // Drag and drop handler
   const handleDragEnd = useCallback((result: DropResult) => {
-    setIsDragging(false)
-    setDragOverSessionIdx(null)
-
     const { source, destination, draggableId } = result
 
     if (!destination) return
@@ -533,17 +521,10 @@ export function SessionLog({
     )
   }
 
-  const renderCycleContent = (
-    circuit: CircuitGroup,
-    circuitIdx: number,
-    session: Session,
-    provided: DraggableProvided,
-    snapshot: DraggableStateSnapshot
-  ) => {
+  const renderCycleCard = (circuit: CircuitGroup, circuitIdx: number, totalCircuits: number, isDragging: boolean) => {
     const allSets = circuit.rounds.flat()
     const lastSet = allSets[allSets.length - 1]
-    const circuits = detectCircuits(session.sets)
-    const hasRestAfter = lastSet?.rest && circuitIdx < circuits.length - 1
+    const hasRestAfter = lastSet?.rest && circuitIdx < totalCircuits - 1
 
     if (circuit.isCircuit) {
       const exerciseNames = circuit.pattern.map(id => {
@@ -552,13 +533,8 @@ export function SessionLog({
       })
 
       return (
-        <div
-          ref={provided.innerRef}
-          {...provided.draggableProps}
-          {...provided.dragHandleProps}
-          className={snapshot.isDragging ? 'opacity-90 shadow-2xl' : ''}
-        >
-          <div className={`bg-[var(--surface)] rounded-lg p-3 ${snapshot.isDragging ? 'ring-2 ring-blue-500' : ''}`}>
+        <>
+          <div className={`bg-[var(--surface)] rounded-lg p-3 ${isDragging ? 'ring-2 ring-blue-500' : ''}`}>
             <div className="font-medium text-sm mb-2 flex items-center gap-2">
               <span className="text-[var(--success)]">⟳</span>
               <span>{exerciseNames.join(' + ')}</span>
@@ -581,7 +557,7 @@ export function SessionLog({
             </div>
           </div>
           {hasRestAfter && renderInterCycleRest(lastSet)}
-        </div>
+        </>
       )
     } else {
       const exId = circuit.pattern[0]
@@ -589,13 +565,8 @@ export function SessionLog({
       const name = exercise?.name ?? exId
 
       return (
-        <div
-          ref={provided.innerRef}
-          {...provided.draggableProps}
-          {...provided.dragHandleProps}
-          className={snapshot.isDragging ? 'opacity-90 shadow-2xl' : ''}
-        >
-          <div className={`bg-[var(--surface)] rounded-lg p-3 ${snapshot.isDragging ? 'ring-2 ring-blue-500' : ''}`}>
+        <>
+          <div className={`bg-[var(--surface)] rounded-lg p-3 ${isDragging ? 'ring-2 ring-blue-500' : ''}`}>
             <div className="font-medium text-sm mb-2 flex items-center gap-2">
               <span>{name}</span>
               <span className="ml-auto text-[var(--text-muted)] select-none cursor-grab">
@@ -607,45 +578,66 @@ export function SessionLog({
             </div>
           </div>
           {hasRestAfter && renderInterCycleRest(lastSet)}
-        </div>
+        </>
       )
     }
   }
 
-  const renderSessionContent = (session: Session, isDropTarget = false) => {
+  const renderSessionDropZone = (session: Session, isExpanded: boolean) => {
     const circuits = detectCircuits(session.sets)
     const sessionEndTs = session.endTs
     const droppableId = `session-${sessionEndTs}`
 
     return (
       <Droppable droppableId={droppableId} type="CYCLE">
-        {(provided, snapshot) => (
-          <div
-            ref={provided.innerRef}
-            {...provided.droppableProps}
-            data-testid="session-content"
-            className={`px-4 pb-3 transition-colors ${
-              snapshot.isDraggingOver ? 'bg-blue-500/10 rounded-lg' : ''
-            } ${isDropTarget ? 'min-h-[60px]' : 'min-h-[50px]'}`}
-            onClick={handleClickOutside}
-          >
-            {circuits.map((circuit, circuitIdx) => (
-              <Draggable
-                key={`cycle-${sessionEndTs}-${circuitIdx}`}
-                draggableId={`cycle-${sessionEndTs}-${circuitIdx}`}
-                index={circuitIdx}
-                isDragDisabled={editingTs !== null || editingRestTs !== null}
-              >
-                {(provided, snapshot) => (
-                  <div className={circuitIdx > 0 ? 'mt-2' : ''}>
-                    {renderCycleContent(circuit, circuitIdx, session, provided, snapshot)}
-                  </div>
-                )}
-              </Draggable>
-            ))}
-            {provided.placeholder}
-          </div>
-        )}
+        {(dropProvided, dropSnapshot) => {
+          const showContent = isExpanded || dropSnapshot.isDraggingOver
+
+          return (
+            <div
+              ref={dropProvided.innerRef}
+              {...dropProvided.droppableProps}
+              data-testid="session-content"
+              className={`transition-all ${
+                showContent ? 'px-4 pb-3' : 'h-0 overflow-hidden'
+              } ${dropSnapshot.isDraggingOver ? 'bg-blue-500/10' : ''}`}
+              onClick={handleClickOutside}
+            >
+              {isExpanded && (
+                <div className="flex flex-col gap-2">
+                  {circuits.map((circuit, circuitIdx) => (
+                    <Draggable
+                      key={`cycle-${sessionEndTs}-${circuitIdx}`}
+                      draggableId={`cycle-${sessionEndTs}-${circuitIdx}`}
+                      index={circuitIdx}
+                      isDragDisabled={editingTs !== null || editingRestTs !== null}
+                    >
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          className={snapshot.isDragging ? 'opacity-90 shadow-2xl z-50' : ''}
+                        >
+                          {renderCycleCard(circuit, circuitIdx, circuits.length, snapshot.isDragging)}
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                </div>
+              )}
+
+              {/* Drop indicator for collapsed sessions */}
+              {!isExpanded && dropSnapshot.isDraggingOver && (
+                <div className="py-4 text-center text-sm text-blue-500 border-2 border-dashed border-blue-500/30 rounded-lg">
+                  Drop here
+                </div>
+              )}
+
+              {dropProvided.placeholder}
+            </div>
+          )
+        }}
       </Droppable>
     )
   }
@@ -656,13 +648,12 @@ export function SessionLog({
   const lastCompletedSession = sessions.filter(s => s.endTs !== null).pop()
 
   return (
-    <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DragDropContext onDragEnd={handleDragEnd}>
       <div className="bg-[var(--bg)]">
         {reversedSessions.map((session, idx) => {
           const originalIdx = sessions.length - 1 - idx
           const isActive = session.endTs === null
           const isExpanded = expandedSessionIdx === originalIdx
-          const isDragExpandTarget = isDragging && dragOverSessionIdx === originalIdx && !isExpanded
           const isLastCompleted = lastCompletedSession === session
           const totalSets = session.sets.length
           const totalVolume = session.sets.reduce((sum, set) => sum + set.kg * set.reps, 0)
@@ -672,7 +663,6 @@ export function SessionLog({
             <div
               key={session.startTs}
               className={idx > 0 ? 'border-t border-[var(--border)]' : ''}
-              onDragEnter={() => isDragging && setDragOverSessionIdx(originalIdx)}
             >
               {/* Session Header */}
               <div
@@ -680,12 +670,10 @@ export function SessionLog({
                 tabIndex={0}
                 onClick={() => setExpandedSessionIdx(isExpanded ? null : originalIdx)}
                 onKeyDown={(e) => e.key === 'Enter' && setExpandedSessionIdx(isExpanded ? null : originalIdx)}
-                className={`w-full px-4 py-3 flex items-center justify-between cursor-pointer transition-colors hover:bg-[var(--surface)]/50 ${
-                  isDragExpandTarget ? 'bg-blue-500/10' : ''
-                }`}
+                className="w-full px-4 py-3 flex items-center justify-between cursor-pointer transition-colors hover:bg-[var(--surface)]/50"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-lg">{isExpanded || isDragExpandTarget ? '▼' : '▶'}</span>
+                  <span className="text-lg">{isExpanded ? '▼' : '▶'}</span>
                   <div className="text-left">
                     <div className="font-medium flex items-center gap-2">
                       <span>{formatSessionDate(session.startTs)}</span>
@@ -761,7 +749,7 @@ export function SessionLog({
                 </div>
               </div>
 
-              {(isExpanded || isDragExpandTarget) && renderSessionContent(session, isDragExpandTarget)}
+              {renderSessionDropZone(session, isExpanded)}
             </div>
           )
         })}
