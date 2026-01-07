@@ -316,6 +316,49 @@ export function useAppState() {
     })
   }, [])
 
+  const moveCycleToSession = useCallback((
+    cycleSetTimestamps: number[],
+    targetSessionEndTs: number | null
+  ) => {
+    updateStateFn(prev => {
+      // Find and extract the sets to move
+      const setsToMove = cycleSetTimestamps
+        .map(ts => prev.history.find(e => isSetEntry(e) && e.ts === ts))
+        .filter((s): s is SetEntry => s !== undefined)
+
+      if (setsToMove.length === 0) return prev
+
+      // Remove the sets from wherever they are
+      const historyWithoutSets = prev.history.filter(
+        e => !cycleSetTimestamps.includes(e.ts)
+      )
+
+      // Find where to insert - just before the target session-end marker
+      // or at the end if targetSessionEndTs is null (current session)
+      let insertIdx: number
+
+      if (targetSessionEndTs === null) {
+        // Insert at end (current session)
+        insertIdx = historyWithoutSets.length
+      } else {
+        // Find the session-end marker and insert before it
+        insertIdx = historyWithoutSets.findIndex(
+          e => isSessionEndMarker(e) && e.ts === targetSessionEndTs
+        )
+        if (insertIdx === -1) return prev
+      }
+
+      return {
+        ...prev,
+        history: [
+          ...historyWithoutSets.slice(0, insertIdx),
+          ...setsToMove,
+          ...historyWithoutSets.slice(insertIdx),
+        ],
+      }
+    })
+  }, [])
+
   return {
     state,
     actions: {
@@ -338,6 +381,7 @@ export function useAppState() {
       updateSet,
       restoreSets,
       moveCycleInSession,
+      moveCycleToSession,
     },
   }
 }

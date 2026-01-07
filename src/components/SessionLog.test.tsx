@@ -34,10 +34,72 @@ describe('SessionLog', () => {
     onDeleteSession: vi.fn(),
     onRemoveSet: vi.fn(),
     onUpdateSet: vi.fn(),
+    onMoveCycleInSession: vi.fn(),
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  describe('selection and action bar', () => {
+    const historyWithSets: HistoryEntry[] = [
+      createSet('bench', 60, 10, 1000),
+      createSet('bench', 65, 8, 2000),
+    ]
+
+    it('shows set values by default', () => {
+      render(<SessionLog {...defaultProps} history={historyWithSets} />)
+
+      expect(screen.getByText(/Bench Press/i)).toBeInTheDocument()
+      expect(screen.getByText('60kg × 10')).toBeInTheDocument()
+    })
+
+    it('shows action bar when a set is selected', () => {
+      render(<SessionLog {...defaultProps} history={historyWithSets} />)
+
+      // Click to select the set
+      const setButton = screen.getByText('60kg × 10')
+      fireEvent.click(setButton)
+
+      // Action bar should appear with Edit and Delete buttons
+      expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument()
+    })
+
+    it('calls onRemoveSet when delete is clicked from action bar', () => {
+      const onRemoveSet = vi.fn()
+      render(
+        <SessionLog
+          {...defaultProps}
+          history={historyWithSets}
+          onRemoveSet={onRemoveSet}
+        />
+      )
+
+      // Select the set
+      fireEvent.click(screen.getByText('60kg × 10'))
+
+      // Click delete in action bar
+      fireEvent.click(screen.getByRole('button', { name: /delete/i }))
+
+      expect(onRemoveSet).toHaveBeenCalledWith(historyWithSets[0])
+    })
+
+    it('hides action bar when cancel is clicked', () => {
+      render(<SessionLog {...defaultProps} history={historyWithSets} />)
+
+      // Select the set
+      fireEvent.click(screen.getByText('60kg × 10'))
+
+      // Action bar should be visible
+      expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument()
+
+      // Click cancel (X button)
+      fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+
+      // Action bar should be hidden
+      expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument()
+    })
   })
 
   describe('edit mode', () => {
@@ -46,15 +108,7 @@ describe('SessionLog', () => {
       createSet('bench', 65, 8, 2000),
     ]
 
-    it('shows set values in display mode by default', () => {
-      render(<SessionLog {...defaultProps} history={historyWithSets} />)
-
-      // Click to expand session
-      const sessionHeader = screen.getByText(/Bench Press/i)
-      expect(sessionHeader).toBeInTheDocument()
-    })
-
-    it('enters edit mode on tap when set is already selected', () => {
+    it('enters edit mode on double-tap (tap selected set)', () => {
       render(<SessionLog {...defaultProps} history={historyWithSets} />)
 
       // First tap - select the set
@@ -65,18 +119,30 @@ describe('SessionLog', () => {
       fireEvent.click(setButton)
 
       // Edit inputs should appear
-      expect(screen.getByDisplayValue('60')).toBeInTheDocument() // kg input
-      expect(screen.getByDisplayValue('10')).toBeInTheDocument() // reps input
+      expect(screen.getByDisplayValue('60')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('10')).toBeInTheDocument()
+    })
+
+    it('enters edit mode when Edit button in action bar is clicked', () => {
+      render(<SessionLog {...defaultProps} history={historyWithSets} />)
+
+      // Select the set
+      fireEvent.click(screen.getByText('60kg × 10'))
+
+      // Click Edit in action bar
+      fireEvent.click(screen.getByRole('button', { name: /edit/i }))
+
+      // Edit inputs should appear
+      expect(screen.getByDisplayValue('60')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('10')).toBeInTheDocument()
     })
 
     it('shows save and cancel buttons in edit mode', () => {
       render(<SessionLog {...defaultProps} history={historyWithSets} />)
 
-      // First tap - select
+      // Select and enter edit mode
       const setButton = screen.getByText('60kg × 10')
       fireEvent.click(setButton)
-
-      // Second tap - edit
       fireEvent.click(setButton)
 
       expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
@@ -128,25 +194,6 @@ describe('SessionLog', () => {
       // Should be back to display mode
       expect(screen.queryByDisplayValue('60')).not.toBeInTheDocument()
       expect(screen.getByText('60kg × 10')).toBeInTheDocument()
-    })
-
-    it('exits edit mode when clicking outside', () => {
-      render(<SessionLog {...defaultProps} history={historyWithSets} />)
-
-      // Select and enter edit mode
-      const setButton = screen.getByText('60kg × 10')
-      fireEvent.click(setButton)
-      fireEvent.click(setButton)
-
-      // Verify edit mode is active
-      expect(screen.getByDisplayValue('60')).toBeInTheDocument()
-
-      // Click outside (on the session container)
-      const container = screen.getByTestId('session-content')
-      fireEvent.click(container)
-
-      // Should be back to display mode
-      expect(screen.queryByDisplayValue('60')).not.toBeInTheDocument()
     })
 
     it('allows editing rest time', () => {
@@ -217,16 +264,17 @@ describe('SessionLog', () => {
     })
   })
 
-  describe('swipe to delete', () => {
+  describe('drag handle visibility', () => {
     const historyWithSets: HistoryEntry[] = [
       createSet('bench', 60, 10, 1000),
+      createSet('bench', 65, 8, 2000),
     ]
 
-    it('uses SwipeableSet for set items', () => {
+    it('shows drag handle on cycle groups', () => {
       render(<SessionLog {...defaultProps} history={historyWithSets} />)
 
-      // The swipeable container should be present
-      expect(screen.getByTestId('swipeable-set')).toBeInTheDocument()
+      // The drag handle indicator should be visible
+      expect(screen.getByText('⋮⋮')).toBeInTheDocument()
     })
   })
 })

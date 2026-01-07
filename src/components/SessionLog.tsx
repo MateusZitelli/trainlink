@@ -1,4 +1,21 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
+import {
+  DndContext,
+  closestCenter,
+  DragOverlay,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  TouchSensor,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import type { HistoryEntry, SetEntry, Difficulty } from '../lib/state'
 import { isSetEntry, isSessionEndMarker } from '../lib/state'
 import type { Exercise } from '../hooks/useExerciseDB'
@@ -9,23 +26,25 @@ import {
   formatSessionDate,
   formatTimeOfDay,
 } from '../lib/utils'
-import { SwipeableSet } from './SwipeableSet'
+import { ActionBar } from './ActionBar'
 
-interface SessionLogProps {
+export interface SessionLogProps {
   history: HistoryEntry[]
   getExercise: (id: string) => Exercise | null
   onEndSession: () => void
   onResumeSession: () => void
   onDeleteSession: (sessionEndTs: number) => void
-  onRemoveSet: (ts: number) => void
+  onRemoveSet: (set: SetEntry) => void
   onUpdateSet?: (ts: number, updates: Partial<Omit<SetEntry, 'ts' | 'type'>>) => void
+  onMoveCycleInSession?: (cycleSetTimestamps: number[], targetIndex: number, sessionEndTs: number | null) => void
+  onMoveCycleToSession?: (cycleSetTimestamps: number[], targetSessionEndTs: number | null) => void
   onShareSession?: (session: Session) => void
-  urlCutoffTs?: number | null  // Oldest timestamp in URL, null if all sessions fit
+  urlCutoffTs?: number | null
 }
 
 export interface Session {
   sets: SetEntry[]
-  endTs: number | null // null if in progress
+  endTs: number | null
   startTs: number
 }
 
@@ -43,10 +62,6 @@ function detectCircuits(sets: SetEntry[]): CircuitGroup[] {
   let i = 0
 
   while (i < sets.length) {
-    // Try to detect a circuit pattern starting at position i
-    // A circuit is detected when: A, B, A (first exercise repeats = round 2 starting)
-
-    // First, collect potential pattern until we see a repeat of the first exercise
     const pattern: string[] = []
     const patternSets: SetEntry[] = []
     let j = i
@@ -56,7 +71,6 @@ function detectCircuits(sets: SetEntry[]): CircuitGroup[] {
       const exId = sets[j].exId
 
       if (pattern.length > 0 && exId === pattern[0]) {
-        // Found repeat of first exercise - this is a circuit!
         foundCircuit = true
         break
       }
@@ -65,24 +79,20 @@ function detectCircuits(sets: SetEntry[]): CircuitGroup[] {
         pattern.push(exId)
         patternSets.push(sets[j])
       } else {
-        // Repeat of non-first exercise - not a circuit pattern, break
         break
       }
       j++
     }
 
-    // It's a circuit if we have 2+ exercises and the first one repeated
     const isCircuit = pattern.length > 1 && foundCircuit
 
     if (isCircuit) {
-      // Collect all rounds (including partial ones)
       const rounds: SetEntry[][] = [patternSets]
       let roundStart = j
 
       while (roundStart < sets.length) {
         const roundSets: SetEntry[] = []
 
-        // Collect sets that follow the pattern (allow partial rounds)
         for (let p = 0; p < pattern.length && roundStart + p < sets.length; p++) {
           if (sets[roundStart + p].exId === pattern[p]) {
             roundSets.push(sets[roundStart + p])
@@ -102,7 +112,6 @@ function detectCircuits(sets: SetEntry[]): CircuitGroup[] {
       groups.push({ pattern, rounds, isCircuit: true })
       i = roundStart
     } else {
-      // Not a circuit - group consecutive sets of the same exercise
       const exId = sets[i].exId
       const consecutiveSets: SetEntry[] = []
 
@@ -147,7 +156,6 @@ function parseSessions(history: HistoryEntry[]): Session[] {
     }
   }
 
-  // Add current in-progress session if any
   if (currentSets.length > 0 && sessionStart !== null) {
     sessions.push({
       sets: currentSets,
@@ -159,6 +167,40 @@ function parseSessions(history: HistoryEntry[]): Session[] {
   return sessions
 }
 
+// Sortable cycle group component
+interface SortableCycleProps {
+  id: string
+  children: React.ReactNode
+  disabled?: boolean
+}
+
+function SortableCycle({ id, children, disabled }: SortableCycleProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, disabled })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    cursor: disabled ? 'default' : 'grab',
+  }
+
+  // Remove role="button" from attributes to avoid conflicts
+  const { role: _role, ...restAttributes } = attributes
+
+  return (
+    <div ref={setNodeRef} style={style} {...restAttributes} {...listeners} data-sortable>
+      {children}
+    </div>
+  )
+}
+
 export function SessionLog({
   history,
   getExercise,
@@ -167,6 +209,8 @@ export function SessionLog({
   onDeleteSession,
   onRemoveSet,
   onUpdateSet,
+  onMoveCycleInSession,
+  onMoveCycleToSession,
   onShareSession,
   urlCutoffTs,
 }: SessionLogProps) {
@@ -174,27 +218,38 @@ export function SessionLog({
   const [selectedTs, setSelectedTs] = useState<number | null>(null)
   const [editingTs, setEditingTs] = useState<number | null>(null)
   const [editValues, setEditValues] = useState({ kg: '', reps: '', rest: '' })
+  const [activeDragId, setActiveDragId] = useState<string | null>(null)
 
   const sessions = useMemo(() => parseSessions(history), [history])
 
-  // Check if a session is shareable (included in URL)
+  // Configure sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
+      },
+    })
+  )
+
   const isShareable = (session: Session): boolean => {
-    if (urlCutoffTs === null || urlCutoffTs === undefined) return true  // All sessions in URL
+    if (urlCutoffTs === null || urlCutoffTs === undefined) return true
     return session.startTs >= urlCutoffTs
   }
 
-  if (sessions.length === 0) return null
+  const handleSetClick = useCallback((set: SetEntry, e: React.MouseEvent) => {
+    e.stopPropagation()
 
-  // Reverse to show most recent first
-  const reversedSessions = [...sessions].reverse()
-
-  const lastCompletedSession = sessions.filter(s => s.endTs !== null).pop()
-
-  const handleSetClick = (set: SetEntry) => {
-    if (editingTs === set.ts) return // Already in edit mode
+    if (editingTs === set.ts) return
 
     if (selectedTs === set.ts) {
-      // Second tap - enter edit mode
+      // Double-tap - enter edit mode
       setEditingTs(set.ts)
       setEditValues({
         kg: set.kg.toString(),
@@ -202,13 +257,35 @@ export function SessionLog({
         rest: set.rest?.toString() ?? '',
       })
     } else {
-      // First tap - select
+      // Single tap - select
       setSelectedTs(set.ts)
       setEditingTs(null)
     }
-  }
+  }, [selectedTs, editingTs])
 
-  const handleSave = (ts: number, difficulty?: Difficulty) => {
+  const handleEdit = useCallback(() => {
+    if (selectedTs === null) return
+    const set = sessions.flatMap(s => s.sets).find(s => s.ts === selectedTs)
+    if (!set) return
+
+    setEditingTs(selectedTs)
+    setEditValues({
+      kg: set.kg.toString(),
+      reps: set.reps.toString(),
+      rest: set.rest?.toString() ?? '',
+    })
+  }, [selectedTs, sessions])
+
+  const handleDelete = useCallback(() => {
+    if (selectedTs === null) return
+    const set = sessions.flatMap(s => s.sets).find(s => s.ts === selectedTs)
+    if (set) {
+      onRemoveSet(set)
+      setSelectedTs(null)
+    }
+  }, [selectedTs, sessions, onRemoveSet])
+
+  const handleSave = useCallback((ts: number, difficulty?: Difficulty) => {
     if (onUpdateSet) {
       const updates: Partial<Omit<SetEntry, 'ts' | 'type'>> = {
         kg: parseFloat(editValues.kg) || 0,
@@ -224,36 +301,99 @@ export function SessionLog({
     }
     setEditingTs(null)
     setSelectedTs(null)
-  }
+  }, [editValues, onUpdateSet])
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setEditingTs(null)
     setSelectedTs(null)
-  }
+  }, [])
 
-  const handleClickOutside = () => {
-    if (editingTs !== null || selectedTs !== null) {
-      setEditingTs(null)
+  const handleClickOutside = useCallback(() => {
+    if (editingTs === null && selectedTs !== null) {
       setSelectedTs(null)
     }
-  }
+  }, [editingTs, selectedTs])
+
+  // Drag and drop handlers
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDragId(event.active.id as string)
+    // Clear selection when dragging starts
+    setSelectedTs(null)
+    setEditingTs(null)
+  }, [])
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveDragId(null)
+
+    if (!over || active.id === over.id) return
+
+    // Parse the drag IDs: format is "session-{endTs}-cycle-{index}"
+    const activeMatch = (active.id as string).match(/session-(.+)-cycle-(\d+)/)
+    const overMatch = (over.id as string).match(/session-(.+)-cycle-(\d+)/)
+
+    if (!activeMatch || !overMatch) return
+
+    const activeSessionEndTs = activeMatch[1] === 'null' ? null : parseInt(activeMatch[1])
+    const activeCycleIdx = parseInt(activeMatch[2])
+    const overSessionEndTs = overMatch[1] === 'null' ? null : parseInt(overMatch[1])
+    const overCycleIdx = parseInt(overMatch[2])
+
+    const sourceSession = sessions.find(s =>
+      (s.endTs === null && activeSessionEndTs === null) ||
+      s.endTs === activeSessionEndTs
+    )
+    if (!sourceSession) return
+
+    const circuits = detectCircuits(sourceSession.sets)
+    const activeCycle = circuits[activeCycleIdx]
+    if (!activeCycle) return
+
+    const cycleTimestamps = activeCycle.rounds.flat().map(s => s.ts)
+
+    // Check if cross-session move
+    if (activeSessionEndTs !== overSessionEndTs) {
+      // Cross-session move - use onMoveCycleToSession
+      if (onMoveCycleToSession) {
+        onMoveCycleToSession(cycleTimestamps, overSessionEndTs)
+      }
+    } else {
+      // Within-session reorder - use onMoveCycleInSession
+      if (onMoveCycleInSession) {
+        const targetSession = sessions.find(s =>
+          (s.endTs === null && overSessionEndTs === null) ||
+          s.endTs === overSessionEndTs
+        )
+        if (!targetSession) return
+
+        const targetCircuits = detectCircuits(targetSession.sets)
+        let targetSetIndex = 0
+        for (let i = 0; i < overCycleIdx; i++) {
+          targetSetIndex += targetCircuits[i].rounds.flat().length
+        }
+
+        onMoveCycleInSession(cycleTimestamps, targetSetIndex, activeSessionEndTs)
+      }
+    }
+  }, [sessions, onMoveCycleInSession, onMoveCycleToSession])
 
   const renderEditUI = (set: SetEntry) => (
-    <div className="bg-[var(--surface)] rounded-lg p-3 space-y-3" onClick={e => e.stopPropagation()}>
+    <div className="bg-[var(--surface-elevated,var(--surface))] rounded-lg p-3 space-y-3 shadow-lg" onClick={e => e.stopPropagation()}>
       <div className="flex items-center gap-2">
         <input
           type="number"
           value={editValues.kg}
           onChange={(e) => setEditValues(prev => ({ ...prev, kg: e.target.value }))}
-          className="w-16 px-2 py-1 bg-[var(--bg)] border border-[var(--border)] rounded text-sm"
+          className="w-20 px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 outline-none transition-all"
           placeholder="kg"
+          autoFocus
         />
         <span className="text-sm text-[var(--text-muted)]">kg ×</span>
         <input
           type="number"
           value={editValues.reps}
           onChange={(e) => setEditValues(prev => ({ ...prev, reps: e.target.value }))}
-          className="w-16 px-2 py-1 bg-[var(--bg)] border border-[var(--border)] rounded text-sm"
+          className="w-20 px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 outline-none transition-all"
           placeholder="reps"
         />
         <span className="text-sm text-[var(--text-muted)]">reps</span>
@@ -263,29 +403,30 @@ export function SessionLog({
           type="number"
           value={editValues.rest}
           onChange={(e) => setEditValues(prev => ({ ...prev, rest: e.target.value }))}
-          className="w-16 px-2 py-1 bg-[var(--bg)] border border-[var(--border)] rounded text-sm"
+          className="w-20 px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 outline-none transition-all"
           placeholder="rest"
         />
         <span className="text-sm text-[var(--text-muted)]">s rest</span>
       </div>
       <div className="flex items-center gap-2">
+        <span className="text-xs text-[var(--text-muted)] mr-1">Difficulty:</span>
         <button
           onClick={() => handleSave(set.ts, 'easy')}
-          className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-medium"
+          className="px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-500/30 transition-colors"
           aria-label="Easy"
         >
           Easy
         </button>
         <button
           onClick={() => handleSave(set.ts, 'normal')}
-          className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-medium"
+          className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-xs font-medium hover:bg-green-500/30 transition-colors"
           aria-label="Normal"
         >
           Normal
         </button>
         <button
           onClick={() => handleSave(set.ts, 'hard')}
-          className="px-2 py-1 bg-orange-500/20 text-orange-400 rounded text-xs font-medium"
+          className="px-3 py-1.5 bg-orange-500/20 text-orange-400 rounded-lg text-xs font-medium hover:bg-orange-500/30 transition-colors"
           aria-label="Hard"
         >
           Hard
@@ -294,14 +435,14 @@ export function SessionLog({
       <div className="flex items-center gap-2 pt-2 border-t border-[var(--border)]">
         <button
           onClick={() => handleSave(set.ts)}
-          className="px-3 py-1 bg-[var(--success)] text-white rounded text-sm font-medium"
+          className="flex-1 px-4 py-2 bg-[var(--success)] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
           aria-label="Save"
         >
           Save
         </button>
         <button
           onClick={handleCancel}
-          className="px-3 py-1 bg-[var(--surface)] border border-[var(--border)] rounded text-sm"
+          className="px-4 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm hover:bg-[var(--surface)] transition-colors"
           aria-label="Cancel"
         >
           Cancel
@@ -310,264 +451,277 @@ export function SessionLog({
     </div>
   )
 
-  const renderSessionContent = (session: Session) => {
-    const circuits = detectCircuits(session.sets)
+  const renderSetButton = (set: SetEntry, index: number, totalSets: number) => {
+    const isSelected = selectedTs === set.ts
+    const isEditing = editingTs === set.ts
+
+    if (isEditing) {
+      return <div key={set.ts}>{renderEditUI(set)}</div>
+    }
 
     return (
-      <div data-testid="session-content" className="px-4 pb-3 space-y-1" onClick={handleClickOutside}>
-        {circuits.map((circuit, circuitIdx) => {
-          const allSets = circuit.rounds.flat()
-          const lastSet = allSets[allSets.length - 1]
-          const hasRestAfter = lastSet?.rest && circuitIdx < circuits.length - 1
-
-          if (circuit.isCircuit) {
-            const exerciseNames = circuit.pattern.map(id => {
-              const name = getExercise(id)?.name ?? id
-              return name.split(' ').slice(0, 2).join(' ')
-            })
-
-            return (
-              <div key={circuitIdx}>
-                <div className="bg-[var(--surface)] rounded-lg p-3">
-                  <div className="font-medium text-sm mb-2">
-                    <span className="text-[var(--success)]">⟳</span> {exerciseNames.join(' + ')}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1">
-                    {circuit.rounds.map((round, roundIdx) => (
-                      <div key={roundIdx} className="flex items-center gap-1">
-                        <span className="text-[var(--text-muted)] text-sm">{roundIdx + 1}.</span>
-                        {round.map((set, i) => {
-                          const isSelected = selectedTs === set.ts
-                          return (
-                            <div key={set.ts} className="flex items-center">
-                              {isSelected ? (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    onRemoveSet(set.ts)
-                                    setSelectedTs(null)
-                                  }}
-                                  className="px-2 py-1 bg-red-500 text-white rounded text-sm font-medium"
-                                >
-                                  Delete
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setSelectedTs(set.ts)
-                                  }}
-                                  className="px-2 py-1 bg-[var(--bg)] rounded text-sm"
-                                >
-                                  <span className="font-medium">{set.kg}×{set.reps}</span>
-                                </button>
-                              )}
-                              {i < round.length - 1 && !isSelected && (
-                                <span className="text-[var(--text-muted)] text-xs px-0.5">,</span>
-                              )}
-                            </div>
-                          )
-                        })}
-                        {round[round.length - 1]?.rest && roundIdx < circuit.rounds.length - 1 && (
-                          <span className="text-xs text-[var(--text-muted)] px-1">
-                            {formatRest(round[round.length - 1].rest!)}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {hasRestAfter && (
-                  <div className="text-center text-xs text-[var(--text-muted)] -mb-1 mt-1">
-                    {formatRest(lastSet.rest!)}
-                  </div>
-                )}
-              </div>
-            )
-          } else {
-            const exId = circuit.pattern[0]
-            const exercise = getExercise(exId)
-            const name = exercise?.name ?? exId
-
-            return (
-              <div key={circuitIdx}>
-                <div className="bg-[var(--surface)] rounded-lg p-3">
-                  <div className="font-medium text-sm mb-2">{name}</div>
-                  <div className="space-y-2">
-                    {allSets.map((set, i) => {
-                      const isSelected = selectedTs === set.ts
-                      const isEditing = editingTs === set.ts
-
-                      if (isEditing) {
-                        return (
-                          <div key={set.ts}>
-                            {renderEditUI(set)}
-                          </div>
-                        )
-                      }
-
-                      return (
-                        <SwipeableSet
-                          key={set.ts}
-                          onDelete={() => onRemoveSet(set.ts)}
-                          onSwipeStart={() => {
-                            setSelectedTs(null)
-                            setEditingTs(null)
-                          }}
-                          forceClose={selectedTs !== set.ts}
-                        >
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleSetClick(set)
-                              }}
-                              className={`px-2 py-1 bg-[var(--bg)] rounded text-sm ${getDifficultyBorderColor(set.difficulty)} ${
-                                isSelected ? 'ring-2 ring-blue-500/50' : ''
-                              }`}
-                            >
-                              <span className="text-[var(--text-muted)]">{i + 1}.</span>{' '}
-                              <span className="font-medium">{set.kg}kg × {set.reps}</span>
-                            </button>
-                            {set.rest && i < allSets.length - 1 && (
-                              <span className="text-xs text-[var(--text-muted)] px-1">
-                                {formatRest(set.rest)}
-                              </span>
-                            )}
-                          </div>
-                        </SwipeableSet>
-                      )
-                    })}
-                  </div>
-                </div>
-                {hasRestAfter && (
-                  <div className="text-center text-xs text-[var(--text-muted)] -mb-1 mt-1">
-                    {formatRest(lastSet.rest!)}
-                  </div>
-                )}
-              </div>
-            )
-          }
-        })}
+      <div key={set.ts} className="flex items-center gap-1">
+        <button
+          onClick={(e) => handleSetClick(set, e)}
+          className={`px-3 py-1.5 bg-[var(--bg)] rounded-lg text-sm transition-all ${getDifficultyBorderColor(set.difficulty)} ${
+            isSelected
+              ? 'ring-2 ring-blue-500 shadow-md scale-[1.02]'
+              : 'hover:bg-[var(--surface)]'
+          }`}
+        >
+          <span className="text-[var(--text-muted)]">{index + 1}.</span>{' '}
+          <span className="font-medium">{set.kg}kg × {set.reps}</span>
+        </button>
+        {set.rest && index < totalSets - 1 && (
+          <span className="text-xs text-[var(--text-muted)] px-1">
+            {formatRest(set.rest)}
+          </span>
+        )}
       </div>
     )
   }
 
-  return (
-    <div className="bg-[var(--bg)]">
-      {reversedSessions.map((session, idx) => {
-        const originalIdx = sessions.length - 1 - idx
-        const isActive = session.endTs === null
-        const isExpanded = expandedSessionIdx === originalIdx
-        const isLastCompleted = lastCompletedSession === session
-        const totalSets = session.sets.length
-        const totalVolume = session.sets.reduce((sum, set) => sum + set.kg * set.reps, 0)
-        const uniqueExercises = new Set(session.sets.map(s => s.exId)).size
+  const renderCycleContent = (circuit: CircuitGroup, circuitIdx: number, session: Session) => {
+    const allSets = circuit.rounds.flat()
+    const lastSet = allSets[allSets.length - 1]
+    const circuits = detectCircuits(session.sets)
+    const hasRestAfter = lastSet?.rest && circuitIdx < circuits.length - 1
 
-        return (
-          <div key={session.startTs} className={idx > 0 ? 'border-t border-[var(--border)]' : ''}>
-            {/* Session Header */}
-            <button
-              onClick={() => setExpandedSessionIdx(isExpanded ? null : originalIdx)}
-              className="w-full px-4 py-3 flex items-center justify-between"
+    if (circuit.isCircuit) {
+      const exerciseNames = circuit.pattern.map(id => {
+        const name = getExercise(id)?.name ?? id
+        return name.split(' ').slice(0, 2).join(' ')
+      })
+
+      return (
+        <div>
+          <div className="bg-[var(--surface)] rounded-lg p-3">
+            <div className="font-medium text-sm mb-2 flex items-center gap-2">
+              <span className="text-[var(--success)]">⟳</span>
+              <span>{exerciseNames.join(' + ')}</span>
+              <span className="ml-auto text-[var(--text-muted)] cursor-grab">⋮⋮</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-1">
+              {circuit.rounds.map((round, roundIdx) => (
+                <div key={roundIdx} className="flex items-center gap-1">
+                  <span className="text-[var(--text-muted)] text-sm">{roundIdx + 1}.</span>
+                  {round.map((set, i) => {
+                    const isSelected = selectedTs === set.ts
+                    return (
+                      <div key={set.ts} className="flex items-center">
+                        <button
+                          onClick={(e) => handleSetClick(set, e)}
+                          className={`px-2 py-1 bg-[var(--bg)] rounded text-sm transition-all ${
+                            isSelected
+                              ? 'ring-2 ring-blue-500 shadow-md scale-[1.02]'
+                              : 'hover:bg-[var(--surface)]'
+                          }`}
+                        >
+                          <span className="font-medium">{set.kg}×{set.reps}</span>
+                        </button>
+                        {i < round.length - 1 && (
+                          <span className="text-[var(--text-muted)] text-xs px-0.5">,</span>
+                        )}
+                      </div>
+                    )
+                  })}
+                  {round[round.length - 1]?.rest && roundIdx < circuit.rounds.length - 1 && (
+                    <span className="text-xs text-[var(--text-muted)] px-1">
+                      {formatRest(round[round.length - 1].rest!)}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+          {hasRestAfter && (
+            <div className="text-center text-xs text-[var(--text-muted)] -mb-1 mt-1">
+              {formatRest(lastSet.rest!)}
+            </div>
+          )}
+        </div>
+      )
+    } else {
+      const exId = circuit.pattern[0]
+      const exercise = getExercise(exId)
+      const name = exercise?.name ?? exId
+
+      return (
+        <div>
+          <div className="bg-[var(--surface)] rounded-lg p-3">
+            <div className="font-medium text-sm mb-2 flex items-center gap-2">
+              <span>{name}</span>
+              <span className="ml-auto text-[var(--text-muted)] cursor-grab">⋮⋮</span>
+            </div>
+            <div className="space-y-2">
+              {allSets.map((set, i) => renderSetButton(set, i, allSets.length))}
+            </div>
+          </div>
+          {hasRestAfter && (
+            <div className="text-center text-xs text-[var(--text-muted)] -mb-1 mt-1">
+              {formatRest(lastSet.rest!)}
+            </div>
+          )}
+        </div>
+      )
+    }
+  }
+
+  const renderSessionContent = (session: Session) => {
+    const circuits = detectCircuits(session.sets)
+    const sessionEndTs = session.endTs
+    const cycleIds = circuits.map((_, idx) => `session-${sessionEndTs}-cycle-${idx}`)
+
+    return (
+      <SortableContext items={cycleIds} strategy={verticalListSortingStrategy}>
+        <div data-testid="session-content" className="px-4 pb-3 space-y-2" onClick={handleClickOutside}>
+          {circuits.map((circuit, circuitIdx) => (
+            <SortableCycle
+              key={cycleIds[circuitIdx]}
+              id={cycleIds[circuitIdx]}
+              disabled={editingTs !== null}
             >
-              <div className="flex items-center gap-3">
-                <span className="text-lg">{isExpanded ? '▼' : '▶'}</span>
-                <div className="text-left">
-                  <div className="font-medium flex items-center gap-2">
-                    <span>{formatSessionDate(session.startTs)}</span>
-                    <span className="text-[var(--text-muted)]">·</span>
-                    <span className="text-sm text-[var(--text-muted)]">{formatTimeOfDay(session.startTs)}</span>
-                    {isActive && (
-                      <span className="text-xs bg-[var(--success)] text-white px-1.5 py-0.5 rounded">Active</span>
-                    )}
-                    {!isActive && !isShareable(session) && (
-                      <span
-                        className="text-xs bg-[var(--surface)] text-[var(--text-muted)] px-1.5 py-0.5 rounded"
-                        title="This session is stored locally and cannot be shared via URL"
-                      >
-                        Local
-                      </span>
-                    )}
+              {renderCycleContent(circuit, circuitIdx, session)}
+            </SortableCycle>
+          ))}
+        </div>
+      </SortableContext>
+    )
+  }
+
+
+  if (sessions.length === 0) return null
+
+  const reversedSessions = [...sessions].reverse()
+  const lastCompletedSession = sessions.filter(s => s.endTs !== null).pop()
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="bg-[var(--bg)]">
+        {reversedSessions.map((session, idx) => {
+          const originalIdx = sessions.length - 1 - idx
+          const isActive = session.endTs === null
+          const isExpanded = expandedSessionIdx === originalIdx
+          const isLastCompleted = lastCompletedSession === session
+          const totalSets = session.sets.length
+          const totalVolume = session.sets.reduce((sum, set) => sum + set.kg * set.reps, 0)
+          const uniqueExercises = new Set(session.sets.map(s => s.exId)).size
+
+          return (
+            <div key={session.startTs} className={idx > 0 ? 'border-t border-[var(--border)]' : ''}>
+              {/* Session Header - using div with role="button" to avoid nested buttons */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setExpandedSessionIdx(isExpanded ? null : originalIdx)}
+                onKeyDown={(e) => e.key === 'Enter' && setExpandedSessionIdx(isExpanded ? null : originalIdx)}
+                className="w-full px-4 py-3 flex items-center justify-between cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">{isExpanded ? '▼' : '▶'}</span>
+                  <div className="text-left">
+                    <div className="font-medium flex items-center gap-2">
+                      <span>{formatSessionDate(session.startTs)}</span>
+                      <span className="text-[var(--text-muted)]">·</span>
+                      <span className="text-sm text-[var(--text-muted)]">{formatTimeOfDay(session.startTs)}</span>
+                      {isActive && (
+                        <span className="text-xs bg-[var(--success)] text-white px-1.5 py-0.5 rounded">Active</span>
+                      )}
+                      {!isActive && !isShareable(session) && (
+                        <span
+                          className="text-xs bg-[var(--surface)] text-[var(--text-muted)] px-1.5 py-0.5 rounded"
+                          title="This session is stored locally and cannot be shared via URL"
+                        >
+                          Local
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm text-[var(--text-muted)]">
+                      {uniqueExercises} exercise{uniqueExercises !== 1 ? 's' : ''} · {totalSets} set{totalSets !== 1 ? 's' : ''} · {Math.round(totalVolume).toLocaleString()}kg · {formatDuration(session.startTs, session.endTs)}
+                    </div>
                   </div>
-                  <div className="text-sm text-[var(--text-muted)]">
-                    {uniqueExercises} exercise{uniqueExercises !== 1 ? 's' : ''} · {totalSets} set{totalSets !== 1 ? 's' : ''} · {Math.round(totalVolume).toLocaleString()}kg · {formatDuration(session.startTs, session.endTs)}
-                  </div>
+                </div>
+
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  {isActive ? (
+                    <button
+                      onClick={onEndSession}
+                      className="px-3 py-1.5 text-sm bg-[var(--success)] text-white rounded-lg"
+                    >
+                      Finish Day
+                    </button>
+                  ) : (
+                    <>
+                      {onShareSession && (
+                        <button
+                          onClick={() => isShareable(session) && onShareSession(session)}
+                          disabled={!isShareable(session)}
+                          className={`p-2 bg-[var(--surface)] rounded-lg ${
+                            isShareable(session)
+                              ? 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--border)]'
+                              : 'text-[var(--text-muted)] opacity-50 cursor-not-allowed'
+                          }`}
+                          title={isShareable(session) ? 'Share session' : 'Session stored locally only'}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                            <polyline points="16 6 12 2 8 6" />
+                            <line x1="12" y1="2" x2="12" y2="15" />
+                          </svg>
+                        </button>
+                      )}
+                      {isLastCompleted ? (
+                        <button
+                          onClick={onResumeSession}
+                          className="px-3 py-1.5 text-sm bg-[var(--surface)] rounded-lg hover:bg-[var(--border)]"
+                        >
+                          Resume Day
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => session.endTs && onDeleteSession(session.endTs)}
+                          className="px-3 py-1.5 text-sm text-red-500 bg-[var(--surface)] rounded-lg hover:bg-red-500 hover:text-white flex items-center gap-1"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                          Delete
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                {isActive ? (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onEndSession()
-                    }}
-                    className="px-3 py-1.5 text-sm bg-[var(--success)] text-white rounded-lg"
-                  >
-                    Finish Day
-                  </button>
-                ) : (
-                  <>
-                    {/* Share button for completed sessions */}
-                    {onShareSession && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (isShareable(session)) {
-                            onShareSession(session)
-                          }
-                        }}
-                        disabled={!isShareable(session)}
-                        className={`p-2 bg-[var(--surface)] rounded-lg ${
-                          isShareable(session)
-                            ? 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--border)]'
-                            : 'text-[var(--text-muted)] opacity-50 cursor-not-allowed'
-                        }`}
-                        title={isShareable(session) ? 'Share session' : 'Session stored locally only'}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                          <polyline points="16 6 12 2 8 6" />
-                          <line x1="12" y1="2" x2="12" y2="15" />
-                        </svg>
-                      </button>
-                    )}
-                    {isLastCompleted ? (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onResumeSession()
-                        }}
-                        className="px-3 py-1.5 text-sm bg-[var(--surface)] rounded-lg hover:bg-[var(--border)]"
-                      >
-                        Resume Day
-                      </button>
-                    ) : (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (session.endTs) onDeleteSession(session.endTs)
-                        }}
-                        className="px-3 py-1.5 text-sm text-red-500 bg-[var(--surface)] rounded-lg hover:bg-red-500 hover:text-white flex items-center gap-1"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6" />
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                        </svg>
-                        Delete
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            </button>
+              {isExpanded && renderSessionContent(session)}
+            </div>
+          )
+        })}
 
-            {/* Session Content */}
-            {isExpanded && renderSessionContent(session)}
+        {/* Action bar for selected set */}
+        {selectedTs !== null && editingTs === null && (
+          <ActionBar
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onCancel={handleCancel}
+          />
+        )}
+      </div>
+
+      {/* Drag overlay */}
+      <DragOverlay>
+        {activeDragId ? (
+          <div className="bg-[var(--surface)] rounded-lg p-3 shadow-xl opacity-90 scale-[1.02]">
+            <div className="text-sm text-[var(--text-muted)]">Moving...</div>
           </div>
-        )
-      })}
-    </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   )
 }

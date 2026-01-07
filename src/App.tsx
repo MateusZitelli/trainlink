@@ -6,7 +6,9 @@ import { SearchView } from './components/SearchView'
 import { SessionLog, type Session } from './components/SessionLog'
 import { QuickExercise } from './components/QuickExercise'
 import { ShareSessionView } from './components/ShareSessionView'
+import { Toast } from './components/Toast'
 import { useExerciseDB } from './hooks/useExerciseDB'
+import { useUndoableDelete } from './hooks/useUndoableDelete'
 import { isSetEntry } from './lib/state'
 import { parseSessionShareFromUrl, clearStorage, generateSessionShareUrl, loadMetadata, type ShareSessionData } from './lib/url'
 import { useState, useMemo, useEffect, useCallback } from 'react'
@@ -15,6 +17,12 @@ import './index.css'
 function App() {
   const { state, actions } = useAppState()
   const [showSearch, setShowSearch] = useState(false)
+
+  // Undo functionality for set deletion
+  const { deleteSet, undo, dismiss, canUndo, undoMessage } = useUndoableDelete({
+    onDelete: actions.removeSet,
+    onRestore: actions.restoreSets,
+  })
   const [sessionShareData, setSessionShareData] = useState<ShareSessionData | null>(null)
   const [urlCutoffTs, setUrlCutoffTs] = useState<number | null>(null)
   const { getExercise, fetchExercises, dbReady } = useExerciseDB()
@@ -272,11 +280,23 @@ function App() {
             onEndSession={actions.endSession}
             onResumeSession={actions.resumeSession}
             onDeleteSession={actions.deleteSession}
-            onRemoveSet={actions.removeSet}
+            onRemoveSet={deleteSet}
+            onUpdateSet={actions.updateSet}
+            onMoveCycleInSession={actions.moveCycleInSession}
+            onMoveCycleToSession={actions.moveCycleToSession}
             onShareSession={handleShareSession}
             urlCutoffTs={urlCutoffTs}
           />
         </div>
+      )}
+
+      {/* Undo toast */}
+      {canUndo && undoMessage && (
+        <Toast
+          message={undoMessage}
+          onUndo={undo}
+          onDismiss={dismiss}
+        />
       )}
     </div>
   )
