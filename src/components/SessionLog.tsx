@@ -167,10 +167,10 @@ function parseSessions(history: HistoryEntry[]): Session[] {
   return sessions
 }
 
-// Sortable cycle group component
+// Sortable cycle group component with drag handle pattern
 interface SortableCycleProps {
   id: string
-  children: React.ReactNode
+  children: (dragHandleProps: React.HTMLAttributes<HTMLSpanElement>) => React.ReactNode
   disabled?: boolean
 }
 
@@ -188,15 +188,19 @@ function SortableCycle({ id, children, disabled }: SortableCycleProps) {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    cursor: disabled ? 'default' : 'grab',
   }
 
   // Remove role="button" from attributes to avoid conflicts
   const { role: _role, ...restAttributes } = attributes
 
+  // Only apply listeners to the drag handle, not the whole element
+  const dragHandleProps: React.HTMLAttributes<HTMLSpanElement> = disabled
+    ? {}
+    : { ...listeners, ...restAttributes }
+
   return (
-    <div ref={setNodeRef} style={style} {...restAttributes} {...listeners} data-sortable>
-      {children}
+    <div ref={setNodeRef} style={style} data-sortable>
+      {children(dragHandleProps)}
     </div>
   )
 }
@@ -481,7 +485,38 @@ export function SessionLog({
     )
   }
 
-  const renderCycleContent = (circuit: CircuitGroup, circuitIdx: number, session: Session) => {
+  const renderCircuitSetButton = (set: SetEntry, showComma: boolean) => {
+    const isSelected = selectedTs === set.ts
+    const isEditing = editingTs === set.ts
+
+    if (isEditing) {
+      return (
+        <div key={set.ts} className="flex items-center">
+          {renderEditUI(set)}
+        </div>
+      )
+    }
+
+    return (
+      <div key={set.ts} className="flex items-center">
+        <button
+          onClick={(e) => handleSetClick(set, e)}
+          className={`px-2 py-1 bg-[var(--bg)] rounded text-sm transition-all ${
+            isSelected
+              ? 'ring-2 ring-blue-500 shadow-md scale-[1.02]'
+              : 'hover:bg-[var(--surface)]'
+          }`}
+        >
+          <span className="font-medium">{set.kg}×{set.reps}</span>
+        </button>
+        {showComma && (
+          <span className="text-[var(--text-muted)] text-xs px-0.5">,</span>
+        )}
+      </div>
+    )
+  }
+
+  const renderCycleContent = (circuit: CircuitGroup, circuitIdx: number, session: Session, dragHandleProps?: React.HTMLAttributes<HTMLSpanElement>) => {
     const allSets = circuit.rounds.flat()
     const lastSet = allSets[allSets.length - 1]
     const circuits = detectCircuits(session.sets)
@@ -499,32 +534,18 @@ export function SessionLog({
             <div className="font-medium text-sm mb-2 flex items-center gap-2">
               <span className="text-[var(--success)]">⟳</span>
               <span>{exerciseNames.join(' + ')}</span>
-              <span className="ml-auto text-[var(--text-muted)] cursor-grab">⋮⋮</span>
+              <span
+                className="ml-auto text-[var(--text-muted)] cursor-grab select-none touch-none"
+                {...dragHandleProps}
+              >
+                ⋮⋮
+              </span>
             </div>
             <div className="flex flex-wrap items-center gap-1">
               {circuit.rounds.map((round, roundIdx) => (
                 <div key={roundIdx} className="flex items-center gap-1">
                   <span className="text-[var(--text-muted)] text-sm">{roundIdx + 1}.</span>
-                  {round.map((set, i) => {
-                    const isSelected = selectedTs === set.ts
-                    return (
-                      <div key={set.ts} className="flex items-center">
-                        <button
-                          onClick={(e) => handleSetClick(set, e)}
-                          className={`px-2 py-1 bg-[var(--bg)] rounded text-sm transition-all ${
-                            isSelected
-                              ? 'ring-2 ring-blue-500 shadow-md scale-[1.02]'
-                              : 'hover:bg-[var(--surface)]'
-                          }`}
-                        >
-                          <span className="font-medium">{set.kg}×{set.reps}</span>
-                        </button>
-                        {i < round.length - 1 && (
-                          <span className="text-[var(--text-muted)] text-xs px-0.5">,</span>
-                        )}
-                      </div>
-                    )
-                  })}
+                  {round.map((set, i) => renderCircuitSetButton(set, i < round.length - 1))}
                   {round[round.length - 1]?.rest && roundIdx < circuit.rounds.length - 1 && (
                     <span className="text-xs text-[var(--text-muted)] px-1">
                       {formatRest(round[round.length - 1].rest!)}
@@ -551,7 +572,12 @@ export function SessionLog({
           <div className="bg-[var(--surface)] rounded-lg p-3">
             <div className="font-medium text-sm mb-2 flex items-center gap-2">
               <span>{name}</span>
-              <span className="ml-auto text-[var(--text-muted)] cursor-grab">⋮⋮</span>
+              <span
+                className="ml-auto text-[var(--text-muted)] cursor-grab select-none touch-none"
+                {...dragHandleProps}
+              >
+                ⋮⋮
+              </span>
             </div>
             <div className="space-y-2">
               {allSets.map((set, i) => renderSetButton(set, i, allSets.length))}
@@ -581,7 +607,7 @@ export function SessionLog({
               id={cycleIds[circuitIdx]}
               disabled={editingTs !== null}
             >
-              {renderCycleContent(circuit, circuitIdx, session)}
+              {(dragHandleProps) => renderCycleContent(circuit, circuitIdx, session, dragHandleProps)}
             </SortableCycle>
           ))}
         </div>

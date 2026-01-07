@@ -5,8 +5,17 @@ interface ActionBarProps {
 }
 
 export function ActionBar({ onEdit, onDelete, onCancel }: ActionBarProps) {
+  // Stop propagation to prevent click-outside handlers from firing
+  const handleContainerClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+  }
+
   return (
-    <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
+    <div
+      className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 animate-slide-up"
+      onClick={handleContainerClick}
+      onMouseDown={handleContainerClick}
+    >
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg px-2 py-2 flex items-center gap-1">
         <button
           onClick={onEdit}
