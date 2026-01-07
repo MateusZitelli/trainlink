@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -9,6 +9,7 @@ import {
   TouchSensor,
   type DragStartEvent,
   type DragEndEvent,
+  type DragMoveEvent,
 } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -167,10 +168,10 @@ function parseSessions(history: HistoryEntry[]): Session[] {
   return sessions
 }
 
-// Sortable cycle group component with drag handle pattern
+// Sortable cycle group component - entire element is draggable
 interface SortableCycleProps {
   id: string
-  children: (dragHandleProps: React.HTMLAttributes<HTMLSpanElement>) => React.ReactNode
+  children: React.ReactNode
   disabled?: boolean
 }
 
@@ -188,19 +189,21 @@ function SortableCycle({ id, children, disabled }: SortableCycleProps) {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    touchAction: 'manipulation', // Allows scroll but enables drag
   }
 
   // Remove role="button" from attributes to avoid conflicts
   const { role: _role, ...restAttributes } = attributes
 
-  // Only apply listeners to the drag handle, not the whole element
-  const dragHandleProps: React.HTMLAttributes<HTMLSpanElement> = disabled
-    ? {}
-    : { ...listeners, ...restAttributes }
-
   return (
-    <div ref={setNodeRef} style={style} data-sortable>
-      {children(dragHandleProps)}
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...restAttributes}
+      {...(disabled ? {} : listeners)}
+      data-sortable
+    >
+      {children}
     </div>
   )
 }
@@ -223,6 +226,9 @@ export function SessionLog({
   const [editingTs, setEditingTs] = useState<number | null>(null)
   const [editValues, setEditValues] = useState({ kg: '', reps: '', rest: '' })
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const [editingRestTs, setEditingRestTs] = useState<number | null>(null)
+  const [editRestValue, setEditRestValue] = useState('')
+  const sessionRefs = useRef<Map<number | null, HTMLDivElement>>(new Map())
 
   const sessions = useMemo(() => parseSessions(history), [history])
 
@@ -381,6 +387,54 @@ export function SessionLog({
     }
   }, [sessions, onMoveCycleInSession, onMoveCycleToSession])
 
+  // Auto-expand sessions when dragging over them
+  const handleDragMove = useCallback((event: DragMoveEvent) => {
+    if (!activeDragId) return
+
+    // Check which session header we're over
+    const { activatorEvent } = event
+    if (!activatorEvent || !('clientY' in activatorEvent)) return
+
+    const y = (activatorEvent as PointerEvent).clientY
+
+    // Find which session we're over and expand it
+    sessionRefs.current.forEach((element, endTs) => {
+      if (!element) return
+      const rect = element.getBoundingClientRect()
+      if (y >= rect.top && y <= rect.bottom) {
+        const sessionIdx = sessions.findIndex(s =>
+          (s.endTs === null && endTs === null) || s.endTs === endTs
+        )
+        if (sessionIdx !== -1 && expandedSessionIdx !== sessionIdx) {
+          setExpandedSessionIdx(sessionIdx)
+        }
+      }
+    })
+  }, [activeDragId, sessions, expandedSessionIdx])
+
+  // Handle inter-cycle rest editing
+  const handleRestClick = useCallback((set: SetEntry, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditingRestTs(set.ts)
+    setEditRestValue(set.rest?.toString() ?? '')
+    setSelectedTs(null)
+    setEditingTs(null)
+  }, [])
+
+  const handleRestSave = useCallback(() => {
+    if (editingRestTs !== null && onUpdateSet) {
+      const restValue = parseInt(editRestValue) || 0
+      onUpdateSet(editingRestTs, { rest: restValue > 0 ? restValue : undefined })
+    }
+    setEditingRestTs(null)
+    setEditRestValue('')
+  }, [editingRestTs, editRestValue, onUpdateSet])
+
+  const handleRestCancel = useCallback(() => {
+    setEditingRestTs(null)
+    setEditRestValue('')
+  }, [])
+
   const renderEditUI = (set: SetEntry) => (
     <div className="bg-[var(--surface-elevated,var(--surface))] rounded-lg p-3 space-y-3 shadow-lg" onClick={e => e.stopPropagation()}>
       <div className="flex items-center gap-2">
@@ -516,7 +570,52 @@ export function SessionLog({
     )
   }
 
-  const renderCycleContent = (circuit: CircuitGroup, circuitIdx: number, session: Session, dragHandleProps?: React.HTMLAttributes<HTMLSpanElement>) => {
+  const renderInterCycleRest = (lastSet: SetEntry) => {
+    const isEditingRest = editingRestTs === lastSet.ts
+
+    if (isEditingRest) {
+      return (
+        <div className="flex items-center justify-center gap-2 mt-1 -mb-1" onClick={e => e.stopPropagation()}>
+          <input
+            type="number"
+            value={editRestValue}
+            onChange={(e) => setEditRestValue(e.target.value)}
+            className="w-16 px-2 py-1 bg-[var(--bg)] border border-[var(--border)] rounded text-xs text-center focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 outline-none"
+            placeholder="sec"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleRestSave()
+              if (e.key === 'Escape') handleRestCancel()
+            }}
+          />
+          <span className="text-xs text-[var(--text-muted)]">s</span>
+          <button
+            onClick={handleRestSave}
+            className="px-2 py-1 bg-[var(--success)] text-white rounded text-xs"
+          >
+            ✓
+          </button>
+          <button
+            onClick={handleRestCancel}
+            className="px-2 py-1 bg-[var(--bg)] border border-[var(--border)] rounded text-xs"
+          >
+            ✕
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <button
+        onClick={(e) => handleRestClick(lastSet, e)}
+        className="block mx-auto text-xs text-[var(--text-muted)] -mb-1 mt-1 px-2 py-0.5 rounded hover:bg-[var(--surface)] hover:text-[var(--text)] transition-colors"
+      >
+        {formatRest(lastSet.rest!)}
+      </button>
+    )
+  }
+
+  const renderCycleContent = (circuit: CircuitGroup, circuitIdx: number, session: Session) => {
     const allSets = circuit.rounds.flat()
     const lastSet = allSets[allSets.length - 1]
     const circuits = detectCircuits(session.sets)
@@ -534,10 +633,7 @@ export function SessionLog({
             <div className="font-medium text-sm mb-2 flex items-center gap-2">
               <span className="text-[var(--success)]">⟳</span>
               <span>{exerciseNames.join(' + ')}</span>
-              <span
-                className="ml-auto text-[var(--text-muted)] cursor-grab select-none touch-none"
-                {...dragHandleProps}
-              >
+              <span className="ml-auto text-[var(--text-muted)] select-none">
                 ⋮⋮
               </span>
             </div>
@@ -555,11 +651,7 @@ export function SessionLog({
               ))}
             </div>
           </div>
-          {hasRestAfter && (
-            <div className="text-center text-xs text-[var(--text-muted)] -mb-1 mt-1">
-              {formatRest(lastSet.rest!)}
-            </div>
-          )}
+          {hasRestAfter && renderInterCycleRest(lastSet)}
         </div>
       )
     } else {
@@ -572,10 +664,7 @@ export function SessionLog({
           <div className="bg-[var(--surface)] rounded-lg p-3">
             <div className="font-medium text-sm mb-2 flex items-center gap-2">
               <span>{name}</span>
-              <span
-                className="ml-auto text-[var(--text-muted)] cursor-grab select-none touch-none"
-                {...dragHandleProps}
-              >
+              <span className="ml-auto text-[var(--text-muted)] select-none">
                 ⋮⋮
               </span>
             </div>
@@ -583,11 +672,7 @@ export function SessionLog({
               {allSets.map((set, i) => renderSetButton(set, i, allSets.length))}
             </div>
           </div>
-          {hasRestAfter && (
-            <div className="text-center text-xs text-[var(--text-muted)] -mb-1 mt-1">
-              {formatRest(lastSet.rest!)}
-            </div>
-          )}
+          {hasRestAfter && renderInterCycleRest(lastSet)}
         </div>
       )
     }
@@ -605,9 +690,9 @@ export function SessionLog({
             <SortableCycle
               key={cycleIds[circuitIdx]}
               id={cycleIds[circuitIdx]}
-              disabled={editingTs !== null}
+              disabled={editingTs !== null || editingRestTs !== null}
             >
-              {(dragHandleProps) => renderCycleContent(circuit, circuitIdx, session, dragHandleProps)}
+              {renderCycleContent(circuit, circuitIdx, session)}
             </SortableCycle>
           ))}
         </div>
@@ -626,6 +711,7 @@ export function SessionLog({
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragStart={handleDragStart}
+      onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
     >
       <div className="bg-[var(--bg)]">
@@ -639,14 +725,22 @@ export function SessionLog({
           const uniqueExercises = new Set(session.sets.map(s => s.exId)).size
 
           return (
-            <div key={session.startTs} className={idx > 0 ? 'border-t border-[var(--border)]' : ''}>
+            <div
+              key={session.startTs}
+              ref={(el) => {
+                if (el) sessionRefs.current.set(session.endTs, el)
+              }}
+              className={idx > 0 ? 'border-t border-[var(--border)]' : ''}
+            >
               {/* Session Header - using div with role="button" to avoid nested buttons */}
               <div
                 role="button"
                 tabIndex={0}
                 onClick={() => setExpandedSessionIdx(isExpanded ? null : originalIdx)}
                 onKeyDown={(e) => e.key === 'Enter' && setExpandedSessionIdx(isExpanded ? null : originalIdx)}
-                className="w-full px-4 py-3 flex items-center justify-between cursor-pointer"
+                className={`w-full px-4 py-3 flex items-center justify-between cursor-pointer transition-colors ${
+                  activeDragId && !isExpanded ? 'hover:bg-[var(--surface)]' : ''
+                }`}
               >
                 <div className="flex items-center gap-3">
                   <span className="text-lg">{isExpanded ? '▼' : '▶'}</span>
