@@ -182,7 +182,7 @@ export function SessionLog({
   const [editValues, setEditValues] = useState({ kg: '', reps: '', rest: '' })
   const [editingRestTs, setEditingRestTs] = useState<number | null>(null)
   const [editRestValue, setEditRestValue] = useState('')
-  const [collapsedSessions, setCollapsedSessions] = useState<Set<number | null>>(new Set())
+  const [isListCollapsed, setIsListCollapsed] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -199,18 +199,6 @@ export function SessionLog({
 
   const scrollToTop = useCallback(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [])
-
-  const toggleSessionCollapse = useCallback((sessionEndTs: number | null) => {
-    setCollapsedSessions(prev => {
-      const next = new Set(prev)
-      if (next.has(sessionEndTs)) {
-        next.delete(sessionEndTs)
-      } else {
-        next.add(sessionEndTs)
-      }
-      return next
-    })
   }, [])
 
   // Flatten all cycles from all sessions into one list (reversed - newest first)
@@ -616,38 +604,28 @@ export function SessionLog({
     const uniqueExercises = new Set(session.sets.map(s => s.exId)).size
     const lastCompletedSession = sessions.filter(s => s.endTs !== null).pop()
     const isLastCompleted = lastCompletedSession === session
-    const isCollapsed = collapsedSessions.has(session.endTs)
 
     return (
       <div className={`${!isFirst ? 'border-t border-[var(--border)] mt-4' : ''}`}>
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => toggleSessionCollapse(session.endTs)}
-          onKeyDown={(e) => e.key === 'Enter' && toggleSessionCollapse(session.endTs)}
-          className="w-full px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-[var(--surface)]/50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-lg text-[var(--text-muted)]">{isCollapsed ? '▶' : '▼'}</span>
-            <div>
-              <div className="font-medium flex items-center gap-2">
-                <span>{formatSessionDate(session.startTs)}</span>
-                <span className="text-[var(--text-muted)]">·</span>
-                <span className="text-sm text-[var(--text-muted)]">{formatTimeOfDay(session.startTs)}</span>
-                {isActive && (
-                  <span className="text-xs bg-[var(--success)] text-white px-1.5 py-0.5 rounded">Active</span>
-                )}
-                {!isActive && !isShareable(session) && (
-                  <span className="text-xs bg-[var(--surface)] text-[var(--text-muted)] px-1.5 py-0.5 rounded">Local</span>
-                )}
-              </div>
-              <div className="text-sm text-[var(--text-muted)]">
-                {uniqueExercises} exercise{uniqueExercises !== 1 ? 's' : ''} · {totalSets} set{totalSets !== 1 ? 's' : ''} · {Math.round(totalVolume).toLocaleString()}kg · {formatDuration(session.startTs, session.endTs)}
-              </div>
+        <div className="w-full px-4 py-3 flex items-center justify-between">
+          <div>
+            <div className="font-medium flex items-center gap-2">
+              <span>{formatSessionDate(session.startTs)}</span>
+              <span className="text-[var(--text-muted)]">·</span>
+              <span className="text-sm text-[var(--text-muted)]">{formatTimeOfDay(session.startTs)}</span>
+              {isActive && (
+                <span className="text-xs bg-[var(--success)] text-white px-1.5 py-0.5 rounded">Active</span>
+              )}
+              {!isActive && !isShareable(session) && (
+                <span className="text-xs bg-[var(--surface)] text-[var(--text-muted)] px-1.5 py-0.5 rounded">Local</span>
+              )}
+            </div>
+            <div className="text-sm text-[var(--text-muted)]">
+              {uniqueExercises} exercise{uniqueExercises !== 1 ? 's' : ''} · {totalSets} set{totalSets !== 1 ? 's' : ''} · {Math.round(totalVolume).toLocaleString()}kg · {formatDuration(session.startTs, session.endTs)}
             </div>
           </div>
 
-          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-2">
             {isActive ? (
               <button
                 onClick={onEndSession}
@@ -704,27 +682,46 @@ export function SessionLog({
 
   if (sessions.length === 0) return null
 
+  // Calculate totals for sessions header
+  const totalSets = sessions.reduce((sum, s) => sum + s.sets.length, 0)
+  const totalVolume = sessions.reduce((sum, s) => sum + s.sets.reduce((v, set) => v + set.kg * set.reps, 0), 0)
+
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       <div ref={containerRef} className="bg-[var(--bg)]" onClick={handleClickOutside}>
-        <Droppable droppableId="all-cycles" type="CYCLE">
-          {(provided) => (
-            <div
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-              className="pb-3"
-            >
-              {flatCycles.map((item, idx) => {
-                const prevItem = flatCycles[idx - 1]
-                const isNewDay = !prevItem || prevItem.session !== item.session
-                const isFirstCycle = idx === 0
-                const isCollapsed = collapsedSessions.has(item.session.endTs)
+        {/* Sessions list header with collapse toggle */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setIsListCollapsed(!isListCollapsed)}
+          onKeyDown={(e) => e.key === 'Enter' && setIsListCollapsed(!isListCollapsed)}
+          className="w-full px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-[var(--surface)]/50 transition-colors border-b border-[var(--border)]"
+        >
+          <span className="text-lg text-[var(--text-muted)]">{isListCollapsed ? '▶' : '▼'}</span>
+          <div>
+            <div className="font-medium">Sessions</div>
+            <div className="text-sm text-[var(--text-muted)]">
+              {sessions.length} day{sessions.length !== 1 ? 's' : ''} · {totalSets} set{totalSets !== 1 ? 's' : ''} · {Math.round(totalVolume).toLocaleString()}kg total
+            </div>
+          </div>
+        </div>
 
-                // Always render day header, but only render cycle content if not collapsed
-                return (
-                  <div key={`cycle-${idx}`}>
-                    {isNewDay && renderDayHeader(item.session, isFirstCycle)}
-                    {!isCollapsed && (
+        {!isListCollapsed && (
+          <Droppable droppableId="all-cycles" type="CYCLE">
+            {(provided) => (
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className="pb-3"
+              >
+                {flatCycles.map((item, idx) => {
+                  const prevItem = flatCycles[idx - 1]
+                  const isNewDay = !prevItem || prevItem.session !== item.session
+                  const isFirstCycle = idx === 0
+
+                  return (
+                    <div key={`cycle-${idx}`}>
+                      {isNewDay && renderDayHeader(item.session, isFirstCycle)}
                       <Draggable
                         draggableId={`cycle-${idx}`}
                         index={idx}
@@ -746,14 +743,14 @@ export function SessionLog({
                           </div>
                         )}
                       </Draggable>
-                    )}
-                  </div>
-                )
-              })}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
+                    </div>
+                  )
+                })}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        )}
 
         {/* Action bar for selected set */}
         {selectedTs !== null && editingTs === null && (
