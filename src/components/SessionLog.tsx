@@ -43,6 +43,14 @@ interface CircuitGroup {
   isCircuit: boolean
 }
 
+interface FlatCycle {
+  circuit: CircuitGroup
+  session: Session
+  sessionIdx: number
+  circuitIdxInSession: number
+  totalCircuitsInSession: number
+}
+
 // Detect circuits from a sequence of sets
 function detectCircuits(sets: SetEntry[]): CircuitGroup[] {
   if (sets.length === 0) return []
@@ -169,15 +177,34 @@ export function SessionLog({
   onShareSession,
   urlCutoffTs,
 }: SessionLogProps) {
-  const [expandedSessionIdx, setExpandedSessionIdx] = useState<number | null>(0)
   const [selectedTs, setSelectedTs] = useState<number | null>(null)
   const [editingTs, setEditingTs] = useState<number | null>(null)
   const [editValues, setEditValues] = useState({ kg: '', reps: '', rest: '' })
   const [editingRestTs, setEditingRestTs] = useState<number | null>(null)
   const [editRestValue, setEditRestValue] = useState('')
-  const [isDragging, setIsDragging] = useState(false)
 
   const sessions = useMemo(() => parseSessions(history), [history])
+
+  // Flatten all cycles from all sessions into one list (reversed - newest first)
+  const flatCycles = useMemo(() => {
+    const cycles: FlatCycle[] = []
+    const reversedSessions = [...sessions].reverse()
+
+    reversedSessions.forEach((session, reversedIdx) => {
+      const sessionIdx = sessions.length - 1 - reversedIdx
+      const circuits = detectCircuits(session.sets)
+      circuits.forEach((circuit, circuitIdxInSession) => {
+        cycles.push({
+          circuit,
+          session,
+          sessionIdx,
+          circuitIdxInSession,
+          totalCircuitsInSession: circuits.length,
+        })
+      })
+    })
+    return cycles
+  }, [sessions])
 
   const isShareable = (session: Session): boolean => {
     if (urlCutoffTs === null || urlCutoffTs === undefined) return true
@@ -190,7 +217,6 @@ export function SessionLog({
     if (editingTs === set.ts) return
 
     if (selectedTs === set.ts) {
-      // Double-tap - enter edit mode
       setEditingTs(set.ts)
       setEditValues({
         kg: set.kg.toString(),
@@ -198,7 +224,6 @@ export function SessionLog({
         rest: set.rest?.toString() ?? '',
       })
     } else {
-      // Single tap - select
       setSelectedTs(set.ts)
       setEditingTs(null)
     }
@@ -255,74 +280,60 @@ export function SessionLog({
     }
   }, [editingTs, selectedTs])
 
-  // Drag and drop handlers
-  const handleDragStart = useCallback(() => {
-    setIsDragging(true)
-  }, [])
-
+  // Drag and drop handler for flat list
   const handleDragEnd = useCallback((result: DropResult) => {
-    setIsDragging(false)
-    const { source, destination, draggableId } = result
+    const { source, destination } = result
 
     if (!destination) return
-    if (source.droppableId === destination.droppableId && source.index === destination.index) return
+    if (source.index === destination.index) return
 
-    // Parse draggable ID: format is "cycle-{sessionEndTs}-{cycleIndex}"
-    const match = draggableId.match(/cycle-(.+)-(\d+)/)
-    if (!match) return
+    const movedCycle = flatCycles[source.index]
+    if (!movedCycle) return
 
-    const sourceSessionEndTs = match[1] === 'null' ? null : parseInt(match[1])
-    const sourceCycleIdx = parseInt(match[2])
+    const cycleTimestamps = movedCycle.circuit.rounds.flat().map(s => s.ts)
 
-    // Parse destination droppable ID: format is "session-{sessionEndTs}"
-    const destMatch = destination.droppableId.match(/session-(.+)/)
-    if (!destMatch) return
+    // Determine target session and position based on destination index
+    let targetSession: Session
+    let targetSetIndex: number
 
-    const destSessionEndTs = destMatch[1] === 'null' ? null : parseInt(destMatch[1])
-
-    // Find source session and cycle
-    const sourceSession = sessions.find(s =>
-      (s.endTs === null && sourceSessionEndTs === null) || s.endTs === sourceSessionEndTs
-    )
-    if (!sourceSession) return
-
-    const circuits = detectCircuits(sourceSession.sets)
-    const activeCycle = circuits[sourceCycleIdx]
-    if (!activeCycle) return
-
-    const cycleTimestamps = activeCycle.rounds.flat().map(s => s.ts)
-
-    // Check if cross-session move
-    if (sourceSessionEndTs !== destSessionEndTs) {
-      // Cross-session move
-      if (onMoveCycleToSession) {
-        onMoveCycleToSession(cycleTimestamps, destSessionEndTs)
-        // Expand destination session
-        const destSessionIdx = sessions.findIndex(s =>
-          (s.endTs === null && destSessionEndTs === null) || s.endTs === destSessionEndTs
-        )
-        if (destSessionIdx !== -1) {
-          setExpandedSessionIdx(destSessionIdx)
-        }
-      }
+    if (destination.index === 0) {
+      // Dropped at very beginning - goes to first displayed session (newest)
+      targetSession = flatCycles[0]?.session ?? sessions[sessions.length - 1]
+      targetSetIndex = 0
+    } else if (destination.index >= flatCycles.length) {
+      // Dropped at the end
+      const lastCycle = flatCycles[flatCycles.length - 1]
+      targetSession = lastCycle.session
+      // Position after all sets in that session
+      targetSetIndex = lastCycle.session.sets.length
     } else {
-      // Within-session reorder
-      if (onMoveCycleInSession) {
-        const targetSession = sessions.find(s =>
-          (s.endTs === null && destSessionEndTs === null) || s.endTs === destSessionEndTs
-        )
-        if (!targetSession) return
+      // Find the cycle at the destination position
+      const cycleAtDest = flatCycles[destination.index]
+      targetSession = cycleAtDest.session
 
-        const targetCircuits = detectCircuits(targetSession.sets)
-        let targetSetIndex = 0
-        for (let i = 0; i < destination.index; i++) {
-          targetSetIndex += targetCircuits[i].rounds.flat().length
-        }
-
-        onMoveCycleInSession(cycleTimestamps, targetSetIndex, sourceSessionEndTs)
+      // Calculate set index within the target session
+      // Count sets in all circuits before this one in the session
+      const circuitsInSession = detectCircuits(targetSession.sets)
+      targetSetIndex = 0
+      for (let i = 0; i < cycleAtDest.circuitIdxInSession; i++) {
+        targetSetIndex += circuitsInSession[i].rounds.flat().length
       }
     }
-  }, [sessions, onMoveCycleInSession, onMoveCycleToSession])
+
+    const sourceSession = movedCycle.session
+
+    if (sourceSession === targetSession) {
+      // Within-session reorder
+      if (onMoveCycleInSession) {
+        onMoveCycleInSession(cycleTimestamps, targetSetIndex, targetSession.endTs)
+      }
+    } else {
+      // Cross-session move
+      if (onMoveCycleToSession) {
+        onMoveCycleToSession(cycleTimestamps, targetSession.endTs)
+      }
+    }
+  }, [flatCycles, sessions, onMoveCycleInSession, onMoveCycleToSession])
 
   // Handle inter-cycle rest editing
   const handleRestClick = useCallback((set: SetEntry, e: React.MouseEvent) => {
@@ -383,21 +394,18 @@ export function SessionLog({
         <button
           onClick={() => handleSave(set.ts, 'easy')}
           className="px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-500/30 transition-colors"
-          aria-label="Easy"
         >
           Easy
         </button>
         <button
           onClick={() => handleSave(set.ts, 'normal')}
           className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-xs font-medium hover:bg-green-500/30 transition-colors"
-          aria-label="Normal"
         >
           Normal
         </button>
         <button
           onClick={() => handleSave(set.ts, 'hard')}
           className="px-3 py-1.5 bg-orange-500/20 text-orange-400 rounded-lg text-xs font-medium hover:bg-orange-500/30 transition-colors"
-          aria-label="Hard"
         >
           Hard
         </button>
@@ -406,14 +414,12 @@ export function SessionLog({
         <button
           onClick={() => handleSave(set.ts)}
           className="flex-1 px-4 py-2 bg-[var(--success)] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
-          aria-label="Save"
         >
           Save
         </button>
         <button
           onClick={handleCancel}
           className="px-4 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm hover:bg-[var(--surface)] transition-colors"
-          aria-label="Cancel"
         >
           Cancel
         </button>
@@ -501,18 +507,8 @@ export function SessionLog({
             }}
           />
           <span className="text-xs text-[var(--text-muted)]">s</span>
-          <button
-            onClick={handleRestSave}
-            className="px-2 py-1 bg-[var(--success)] text-white rounded text-xs"
-          >
-            ✓
-          </button>
-          <button
-            onClick={handleRestCancel}
-            className="px-2 py-1 bg-[var(--bg)] border border-[var(--border)] rounded text-xs"
-          >
-            ✕
-          </button>
+          <button onClick={handleRestSave} className="px-2 py-1 bg-[var(--success)] text-white rounded text-xs">✓</button>
+          <button onClick={handleRestCancel} className="px-2 py-1 bg-[var(--bg)] border border-[var(--border)] rounded text-xs">✕</button>
         </div>
       )
     }
@@ -527,7 +523,7 @@ export function SessionLog({
     )
   }
 
-  const renderCycleCard = (circuit: CircuitGroup, circuitIdx: number, totalCircuits: number, isDragging: boolean) => {
+  const renderCycleCard = (circuit: CircuitGroup, circuitIdx: number, totalCircuits: number, isDraggingThis: boolean) => {
     const allSets = circuit.rounds.flat()
     const lastSet = allSets[allSets.length - 1]
     const hasRestAfter = lastSet?.rest && circuitIdx < totalCircuits - 1
@@ -540,13 +536,11 @@ export function SessionLog({
 
       return (
         <>
-          <div className={`bg-[var(--surface)] rounded-lg p-3 ${isDragging ? 'ring-2 ring-blue-500' : ''}`}>
+          <div className={`bg-[var(--surface)] rounded-lg p-3 ${isDraggingThis ? 'ring-2 ring-blue-500' : ''}`}>
             <div className="font-medium text-sm mb-2 flex items-center gap-2">
               <span className="text-[var(--success)]">⟳</span>
               <span>{exerciseNames.join(' + ')}</span>
-              <span className="ml-auto text-[var(--text-muted)] select-none cursor-grab">
-                ⋮⋮
-              </span>
+              <span className="ml-auto text-[var(--text-muted)] select-none cursor-grab">⋮⋮</span>
             </div>
             <div className="flex flex-wrap items-center gap-1">
               {circuit.rounds.map((round, roundIdx) => (
@@ -572,12 +566,10 @@ export function SessionLog({
 
       return (
         <>
-          <div className={`bg-[var(--surface)] rounded-lg p-3 ${isDragging ? 'ring-2 ring-blue-500' : ''}`}>
+          <div className={`bg-[var(--surface)] rounded-lg p-3 ${isDraggingThis ? 'ring-2 ring-blue-500' : ''}`}>
             <div className="font-medium text-sm mb-2 flex items-center gap-2">
               <span>{name}</span>
-              <span className="ml-auto text-[var(--text-muted)] select-none cursor-grab">
-                ⋮⋮
-              </span>
+              <span className="ml-auto text-[var(--text-muted)] select-none cursor-grab">⋮⋮</span>
             </div>
             <div className="flex flex-wrap items-center gap-1">
               {allSets.map((set, i) => renderSetButton(set, i, allSets.length))}
@@ -589,171 +581,135 @@ export function SessionLog({
     }
   }
 
-  const renderSessionDropZone = (session: Session, isExpanded: boolean, isDragActive: boolean) => {
-    const circuits = detectCircuits(session.sets)
-    const sessionEndTs = session.endTs
-    const droppableId = `session-${sessionEndTs}`
+  const renderDayHeader = (session: Session, isFirst: boolean) => {
+    const isActive = session.endTs === null
+    const totalSets = session.sets.length
+    const totalVolume = session.sets.reduce((sum, set) => sum + set.kg * set.reps, 0)
+    const uniqueExercises = new Set(session.sets.map(s => s.exId)).size
+    const lastCompletedSession = sessions.filter(s => s.endTs !== null).pop()
+    const isLastCompleted = lastCompletedSession === session
 
     return (
-      <Droppable droppableId={droppableId} type="CYCLE">
-        {(dropProvided, dropSnapshot) => {
-          // When dragging, ALL sessions expand to show cycles
-          const showCycles = isExpanded || isDragActive
+      <div className={`${!isFirst ? 'border-t border-[var(--border)] mt-4' : ''} px-4 py-3 flex items-center justify-between`}>
+        <div>
+          <div className="font-medium flex items-center gap-2">
+            <span>{formatSessionDate(session.startTs)}</span>
+            <span className="text-[var(--text-muted)]">·</span>
+            <span className="text-sm text-[var(--text-muted)]">{formatTimeOfDay(session.startTs)}</span>
+            {isActive && (
+              <span className="text-xs bg-[var(--success)] text-white px-1.5 py-0.5 rounded">Active</span>
+            )}
+            {!isActive && !isShareable(session) && (
+              <span className="text-xs bg-[var(--surface)] text-[var(--text-muted)] px-1.5 py-0.5 rounded">Local</span>
+            )}
+          </div>
+          <div className="text-sm text-[var(--text-muted)]">
+            {uniqueExercises} exercise{uniqueExercises !== 1 ? 's' : ''} · {totalSets} set{totalSets !== 1 ? 's' : ''} · {Math.round(totalVolume).toLocaleString()}kg · {formatDuration(session.startTs, session.endTs)}
+          </div>
+        </div>
 
-          return (
-            <div
-              ref={dropProvided.innerRef}
-              {...dropProvided.droppableProps}
-              data-testid="session-content"
-              className={`transition-colors ${
-                showCycles ? 'px-4 pb-3' : 'px-4 py-1'
-              } ${dropSnapshot.isDraggingOver ? 'bg-blue-500/10' : ''}`}
-              onClick={handleClickOutside}
+        <div className="flex items-center gap-2">
+          {isActive ? (
+            <button
+              onClick={onEndSession}
+              className="px-3 py-1.5 text-sm bg-[var(--success)] text-white rounded-lg"
             >
-              {showCycles && circuits.map((circuit, circuitIdx) => (
-                <Draggable
-                  key={`cycle-${sessionEndTs}-${circuitIdx}`}
-                  draggableId={`cycle-${sessionEndTs}-${circuitIdx}`}
-                  index={circuitIdx}
-                  isDragDisabled={editingTs !== null || editingRestTs !== null}
+              Finish Day
+            </button>
+          ) : (
+            <>
+              {onShareSession && (
+                <button
+                  onClick={() => isShareable(session) && onShareSession(session)}
+                  disabled={!isShareable(session)}
+                  className={`p-2 bg-[var(--surface)] rounded-lg ${
+                    isShareable(session)
+                      ? 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--border)]'
+                      : 'text-[var(--text-muted)] opacity-50 cursor-not-allowed'
+                  }`}
+                  title={isShareable(session) ? 'Share session' : 'Session stored locally only'}
                 >
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      {...provided.dragHandleProps}
-                      className={`${circuitIdx > 0 ? 'pt-3' : ''} ${snapshot.isDragging ? 'opacity-90 shadow-2xl z-50' : ''}`}
-                    >
-                      {renderCycleCard(circuit, circuitIdx, circuits.length, snapshot.isDragging)}
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-
-              {/* Minimal collapsed indicator - only when not dragging */}
-              {!showCycles && (
-                <div className="py-0.5 text-center text-xs text-[var(--text-muted)]/50">·</div>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                    <polyline points="16 6 12 2 8 6" />
+                    <line x1="12" y1="2" x2="12" y2="15" />
+                  </svg>
+                </button>
               )}
-
-              {dropProvided.placeholder}
-            </div>
-          )
-        }}
-      </Droppable>
+              {isLastCompleted ? (
+                <button
+                  onClick={onResumeSession}
+                  className="px-3 py-1.5 text-sm bg-[var(--surface)] rounded-lg hover:bg-[var(--border)]"
+                >
+                  Resume Day
+                </button>
+              ) : (
+                <button
+                  onClick={() => session.endTs && onDeleteSession(session.endTs)}
+                  className="px-3 py-1.5 text-sm text-red-500 bg-[var(--surface)] rounded-lg hover:bg-red-500 hover:text-white flex items-center gap-1"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                  Delete
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
     )
   }
 
   if (sessions.length === 0) return null
 
-  const reversedSessions = [...sessions].reverse()
-  const lastCompletedSession = sessions.filter(s => s.endTs !== null).pop()
-
   return (
-    <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="bg-[var(--bg)]">
-        {reversedSessions.map((session, idx) => {
-          const originalIdx = sessions.length - 1 - idx
-          const isActive = session.endTs === null
-          const isExpanded = expandedSessionIdx === originalIdx
-          const isLastCompleted = lastCompletedSession === session
-          const totalSets = session.sets.length
-          const totalVolume = session.sets.reduce((sum, set) => sum + set.kg * set.reps, 0)
-          const uniqueExercises = new Set(session.sets.map(s => s.exId)).size
-
-          return (
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <div className="bg-[var(--bg)]" onClick={handleClickOutside}>
+        <Droppable droppableId="all-cycles" type="CYCLE">
+          {(provided) => (
             <div
-              key={session.startTs}
-              className={idx > 0 ? 'border-t border-[var(--border)]' : ''}
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+              className="pb-3"
             >
-              {/* Session Header */}
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => setExpandedSessionIdx(isExpanded ? null : originalIdx)}
-                onKeyDown={(e) => e.key === 'Enter' && setExpandedSessionIdx(isExpanded ? null : originalIdx)}
-                className="w-full px-4 py-3 flex items-center justify-between cursor-pointer transition-colors hover:bg-[var(--surface)]/50"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-lg">{isExpanded ? '▼' : '▶'}</span>
-                  <div className="text-left">
-                    <div className="font-medium flex items-center gap-2">
-                      <span>{formatSessionDate(session.startTs)}</span>
-                      <span className="text-[var(--text-muted)]">·</span>
-                      <span className="text-sm text-[var(--text-muted)]">{formatTimeOfDay(session.startTs)}</span>
-                      {isActive && (
-                        <span className="text-xs bg-[var(--success)] text-white px-1.5 py-0.5 rounded">Active</span>
-                      )}
-                      {!isActive && !isShareable(session) && (
-                        <span
-                          className="text-xs bg-[var(--surface)] text-[var(--text-muted)] px-1.5 py-0.5 rounded"
-                          title="This session is stored locally and cannot be shared via URL"
-                        >
-                          Local
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-sm text-[var(--text-muted)]">
-                      {uniqueExercises} exercise{uniqueExercises !== 1 ? 's' : ''} · {totalSets} set{totalSets !== 1 ? 's' : ''} · {Math.round(totalVolume).toLocaleString()}kg · {formatDuration(session.startTs, session.endTs)}
-                    </div>
-                  </div>
-                </div>
+              {flatCycles.map((item, idx) => {
+                const prevItem = flatCycles[idx - 1]
+                const isNewDay = !prevItem || prevItem.session !== item.session
+                const isFirstCycle = idx === 0
 
-                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                  {isActive ? (
-                    <button
-                      onClick={onEndSession}
-                      className="px-3 py-1.5 text-sm bg-[var(--success)] text-white rounded-lg"
+                return (
+                  <div key={`cycle-${idx}`}>
+                    {isNewDay && renderDayHeader(item.session, isFirstCycle)}
+                    <Draggable
+                      draggableId={`cycle-${idx}`}
+                      index={idx}
+                      isDragDisabled={editingTs !== null || editingRestTs !== null}
                     >
-                      Finish Day
-                    </button>
-                  ) : (
-                    <>
-                      {onShareSession && (
-                        <button
-                          onClick={() => isShareable(session) && onShareSession(session)}
-                          disabled={!isShareable(session)}
-                          className={`p-2 bg-[var(--surface)] rounded-lg ${
-                            isShareable(session)
-                              ? 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--border)]'
-                              : 'text-[var(--text-muted)] opacity-50 cursor-not-allowed'
-                          }`}
-                          title={isShareable(session) ? 'Share session' : 'Session stored locally only'}
+                      {(dragProvided, dragSnapshot) => (
+                        <div
+                          ref={dragProvided.innerRef}
+                          {...dragProvided.draggableProps}
+                          {...dragProvided.dragHandleProps}
+                          className={`px-4 ${idx > 0 && !isNewDay ? 'pt-3' : 'pt-2'} ${dragSnapshot.isDragging ? 'opacity-90 shadow-2xl z-50' : ''}`}
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                            <polyline points="16 6 12 2 8 6" />
-                            <line x1="12" y1="2" x2="12" y2="15" />
-                          </svg>
-                        </button>
+                          {renderCycleCard(
+                            item.circuit,
+                            item.circuitIdxInSession,
+                            item.totalCircuitsInSession,
+                            dragSnapshot.isDragging
+                          )}
+                        </div>
                       )}
-                      {isLastCompleted ? (
-                        <button
-                          onClick={onResumeSession}
-                          className="px-3 py-1.5 text-sm bg-[var(--surface)] rounded-lg hover:bg-[var(--border)]"
-                        >
-                          Resume Day
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => session.endTs && onDeleteSession(session.endTs)}
-                          className="px-3 py-1.5 text-sm text-red-500 bg-[var(--surface)] rounded-lg hover:bg-red-500 hover:text-white flex items-center gap-1"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                          </svg>
-                          Delete
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {renderSessionDropZone(session, isExpanded, isDragging)}
+                    </Draggable>
+                  </div>
+                )
+              })}
+              {provided.placeholder}
             </div>
-          )
-        })}
+          )}
+        </Droppable>
 
         {/* Action bar for selected set */}
         {selectedTs !== null && editingTs === null && (
