@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import {
   DragDropContext,
   Droppable,
@@ -182,8 +182,36 @@ export function SessionLog({
   const [editValues, setEditValues] = useState({ kg: '', reps: '', rest: '' })
   const [editingRestTs, setEditingRestTs] = useState<number | null>(null)
   const [editRestValue, setEditRestValue] = useState('')
+  const [collapsedSessions, setCollapsedSessions] = useState<Set<number | null>>(new Set())
+  const [showScrollTop, setShowScrollTop] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const sessions = useMemo(() => parseSessions(history), [history])
+
+  // Track scroll position for scroll-to-top button
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
+
+  const toggleSessionCollapse = useCallback((sessionEndTs: number | null) => {
+    setCollapsedSessions(prev => {
+      const next = new Set(prev)
+      if (next.has(sessionEndTs)) {
+        next.delete(sessionEndTs)
+      } else {
+        next.add(sessionEndTs)
+      }
+      return next
+    })
+  }, [])
 
   // Flatten all cycles from all sessions into one list (reversed - newest first)
   const flatCycles = useMemo(() => {
@@ -588,75 +616,87 @@ export function SessionLog({
     const uniqueExercises = new Set(session.sets.map(s => s.exId)).size
     const lastCompletedSession = sessions.filter(s => s.endTs !== null).pop()
     const isLastCompleted = lastCompletedSession === session
+    const isCollapsed = collapsedSessions.has(session.endTs)
 
     return (
-      <div className={`${!isFirst ? 'border-t border-[var(--border)] mt-4' : ''} px-4 py-3 flex items-center justify-between`}>
-        <div>
-          <div className="font-medium flex items-center gap-2">
-            <span>{formatSessionDate(session.startTs)}</span>
-            <span className="text-[var(--text-muted)]">·</span>
-            <span className="text-sm text-[var(--text-muted)]">{formatTimeOfDay(session.startTs)}</span>
-            {isActive && (
-              <span className="text-xs bg-[var(--success)] text-white px-1.5 py-0.5 rounded">Active</span>
-            )}
-            {!isActive && !isShareable(session) && (
-              <span className="text-xs bg-[var(--surface)] text-[var(--text-muted)] px-1.5 py-0.5 rounded">Local</span>
-            )}
+      <div className={`${!isFirst ? 'border-t border-[var(--border)] mt-4' : ''}`}>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => toggleSessionCollapse(session.endTs)}
+          onKeyDown={(e) => e.key === 'Enter' && toggleSessionCollapse(session.endTs)}
+          className="w-full px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-[var(--surface)]/50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-lg text-[var(--text-muted)]">{isCollapsed ? '▶' : '▼'}</span>
+            <div>
+              <div className="font-medium flex items-center gap-2">
+                <span>{formatSessionDate(session.startTs)}</span>
+                <span className="text-[var(--text-muted)]">·</span>
+                <span className="text-sm text-[var(--text-muted)]">{formatTimeOfDay(session.startTs)}</span>
+                {isActive && (
+                  <span className="text-xs bg-[var(--success)] text-white px-1.5 py-0.5 rounded">Active</span>
+                )}
+                {!isActive && !isShareable(session) && (
+                  <span className="text-xs bg-[var(--surface)] text-[var(--text-muted)] px-1.5 py-0.5 rounded">Local</span>
+                )}
+              </div>
+              <div className="text-sm text-[var(--text-muted)]">
+                {uniqueExercises} exercise{uniqueExercises !== 1 ? 's' : ''} · {totalSets} set{totalSets !== 1 ? 's' : ''} · {Math.round(totalVolume).toLocaleString()}kg · {formatDuration(session.startTs, session.endTs)}
+              </div>
+            </div>
           </div>
-          <div className="text-sm text-[var(--text-muted)]">
-            {uniqueExercises} exercise{uniqueExercises !== 1 ? 's' : ''} · {totalSets} set{totalSets !== 1 ? 's' : ''} · {Math.round(totalVolume).toLocaleString()}kg · {formatDuration(session.startTs, session.endTs)}
-          </div>
-        </div>
 
-        <div className="flex items-center gap-2">
-          {isActive ? (
-            <button
-              onClick={onEndSession}
-              className="px-3 py-1.5 text-sm bg-[var(--success)] text-white rounded-lg"
-            >
-              Finish Day
-            </button>
-          ) : (
-            <>
-              {onShareSession && (
-                <button
-                  onClick={() => isShareable(session) && onShareSession(session)}
-                  disabled={!isShareable(session)}
-                  className={`p-2 bg-[var(--surface)] rounded-lg ${
-                    isShareable(session)
-                      ? 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--border)]'
-                      : 'text-[var(--text-muted)] opacity-50 cursor-not-allowed'
-                  }`}
-                  title={isShareable(session) ? 'Share session' : 'Session stored locally only'}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                    <polyline points="16 6 12 2 8 6" />
-                    <line x1="12" y1="2" x2="12" y2="15" />
-                  </svg>
-                </button>
-              )}
-              {isLastCompleted ? (
-                <button
-                  onClick={onResumeSession}
-                  className="px-3 py-1.5 text-sm bg-[var(--surface)] rounded-lg hover:bg-[var(--border)]"
-                >
-                  Resume Day
-                </button>
-              ) : (
-                <button
-                  onClick={() => session.endTs && onDeleteSession(session.endTs)}
-                  className="px-3 py-1.5 text-sm text-red-500 bg-[var(--surface)] rounded-lg hover:bg-red-500 hover:text-white flex items-center gap-1"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  </svg>
-                  Delete
-                </button>
-              )}
-            </>
-          )}
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            {isActive ? (
+              <button
+                onClick={onEndSession}
+                className="px-3 py-1.5 text-sm bg-[var(--success)] text-white rounded-lg"
+              >
+                Finish Day
+              </button>
+            ) : (
+              <>
+                {onShareSession && (
+                  <button
+                    onClick={() => isShareable(session) && onShareSession(session)}
+                    disabled={!isShareable(session)}
+                    className={`p-2 bg-[var(--surface)] rounded-lg ${
+                      isShareable(session)
+                        ? 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--border)]'
+                        : 'text-[var(--text-muted)] opacity-50 cursor-not-allowed'
+                    }`}
+                    title={isShareable(session) ? 'Share session' : 'Session stored locally only'}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                      <polyline points="16 6 12 2 8 6" />
+                      <line x1="12" y1="2" x2="12" y2="15" />
+                    </svg>
+                  </button>
+                )}
+                {isLastCompleted ? (
+                  <button
+                    onClick={onResumeSession}
+                    className="px-3 py-1.5 text-sm bg-[var(--surface)] rounded-lg hover:bg-[var(--border)]"
+                  >
+                    Resume Day
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => session.endTs && onDeleteSession(session.endTs)}
+                    className="px-3 py-1.5 text-sm text-red-500 bg-[var(--surface)] rounded-lg hover:bg-red-500 hover:text-white flex items-center gap-1"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                    Delete
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     )
@@ -666,7 +706,7 @@ export function SessionLog({
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="bg-[var(--bg)]" onClick={handleClickOutside}>
+      <div ref={containerRef} className="bg-[var(--bg)]" onClick={handleClickOutside}>
         <Droppable droppableId="all-cycles" type="CYCLE">
           {(provided) => (
             <div
@@ -678,31 +718,35 @@ export function SessionLog({
                 const prevItem = flatCycles[idx - 1]
                 const isNewDay = !prevItem || prevItem.session !== item.session
                 const isFirstCycle = idx === 0
+                const isCollapsed = collapsedSessions.has(item.session.endTs)
 
+                // Always render day header, but only render cycle content if not collapsed
                 return (
                   <div key={`cycle-${idx}`}>
                     {isNewDay && renderDayHeader(item.session, isFirstCycle)}
-                    <Draggable
-                      draggableId={`cycle-${idx}`}
-                      index={idx}
-                      isDragDisabled={editingTs !== null || editingRestTs !== null}
-                    >
-                      {(dragProvided, dragSnapshot) => (
-                        <div
-                          ref={dragProvided.innerRef}
-                          {...dragProvided.draggableProps}
-                          {...dragProvided.dragHandleProps}
-                          className={`px-4 ${idx > 0 && !isNewDay ? 'pt-3' : 'pt-2'} ${dragSnapshot.isDragging ? 'opacity-90 shadow-2xl z-50' : ''}`}
-                        >
-                          {renderCycleCard(
-                            item.circuit,
-                            item.circuitIdxInSession,
-                            item.totalCircuitsInSession,
-                            dragSnapshot.isDragging
-                          )}
-                        </div>
-                      )}
-                    </Draggable>
+                    {!isCollapsed && (
+                      <Draggable
+                        draggableId={`cycle-${idx}`}
+                        index={idx}
+                        isDragDisabled={editingTs !== null || editingRestTs !== null}
+                      >
+                        {(dragProvided, dragSnapshot) => (
+                          <div
+                            ref={dragProvided.innerRef}
+                            {...dragProvided.draggableProps}
+                            {...dragProvided.dragHandleProps}
+                            className={`px-4 ${item.circuitIdxInSession > 0 ? 'pt-3' : 'pt-2'} ${dragSnapshot.isDragging ? 'opacity-90 shadow-2xl z-50' : ''}`}
+                          >
+                            {renderCycleCard(
+                              item.circuit,
+                              item.circuitIdxInSession,
+                              item.totalCircuitsInSession,
+                              dragSnapshot.isDragging
+                            )}
+                          </div>
+                        )}
+                      </Draggable>
+                    )}
                   </div>
                 )
               })}
@@ -718,6 +762,19 @@ export function SessionLog({
             onDelete={handleDelete}
             onCancel={handleCancel}
           />
+        )}
+
+        {/* Scroll to top button */}
+        {showScrollTop && (
+          <button
+            onClick={scrollToTop}
+            className="fixed bottom-20 right-4 p-3 bg-[var(--surface)] border border-[var(--border)] rounded-full shadow-lg hover:bg-[var(--border)] transition-all z-40"
+            aria-label="Scroll to top"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="18 15 12 9 6 15" />
+            </svg>
+          </button>
         )}
       </div>
     </DragDropContext>
