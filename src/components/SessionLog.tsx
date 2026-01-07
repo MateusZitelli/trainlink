@@ -623,13 +623,22 @@ export function SessionLog({
                       ref={provided.innerRef}
                       {...provided.draggableProps}
                       {...provided.dragHandleProps}
-                      className={`${circuitIdx > 0 ? 'pt-2' : ''} ${snapshot.isDragging ? 'opacity-90 shadow-2xl z-50' : ''}`}
+                      className={`${circuitIdx > 0 ? 'pt-3' : ''} ${snapshot.isDragging ? 'opacity-90 shadow-2xl z-50' : ''}`}
                     >
+                      {/* Drop indicator line above each cycle (except first) during drag */}
+                      {circuitIdx > 0 && isDragActive && !snapshot.isDragging && (
+                        <div className="h-1 -mt-2 mb-1 mx-2 rounded-full bg-blue-500/30" />
+                      )}
                       {renderCycleCard(circuit, circuitIdx, circuits.length, snapshot.isDragging)}
                     </div>
                   )}
                 </Draggable>
               ))}
+
+              {/* Drop indicator at the end of the list during drag */}
+              {showCycles && isDragActive && circuits.length > 0 && (
+                <div className="h-1 mt-2 mx-2 rounded-full bg-blue-500/30" />
+              )}
 
               {/* Collapsed drop indicator - only when not showing cycles */}
               {!showCycles && (
