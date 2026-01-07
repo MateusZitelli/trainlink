@@ -177,6 +177,8 @@ export function SessionLog({
   const [editValues, setEditValues] = useState({ kg: '', reps: '', rest: '' })
   const [editingRestTs, setEditingRestTs] = useState<number | null>(null)
   const [editRestValue, setEditRestValue] = useState('')
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragOverSessionIdx, setDragOverSessionIdx] = useState<number | null>(null)
 
   const sessions = useMemo(() => parseSessions(history), [history])
 
@@ -256,8 +258,16 @@ export function SessionLog({
     }
   }, [editingTs, selectedTs])
 
-  // Drag and drop handler
+  // Drag and drop handlers
+  const handleDragStart = useCallback(() => {
+    setIsDragging(true)
+    setDragOverSessionIdx(null)
+  }, [])
+
   const handleDragEnd = useCallback((result: DropResult) => {
+    setIsDragging(false)
+    setDragOverSessionIdx(null)
+
     const { source, destination, draggableId } = result
 
     if (!destination) return
@@ -483,7 +493,7 @@ export function SessionLog({
 
     if (isEditingRest) {
       return (
-        <div className="flex items-center justify-center gap-2 mt-1 -mb-1" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-center gap-2 mt-2" onClick={e => e.stopPropagation()}>
           <input
             type="number"
             value={editRestValue}
@@ -516,7 +526,7 @@ export function SessionLog({
     return (
       <button
         onClick={(e) => handleRestClick(lastSet, e)}
-        className="block mx-auto text-xs text-[var(--text-muted)] -mb-1 mt-1 px-2 py-0.5 rounded hover:bg-[var(--surface)] hover:text-[var(--text)] transition-colors"
+        className="block mx-auto text-xs text-[var(--text-muted)] mt-2 px-2 py-0.5 rounded hover:bg-[var(--surface)] hover:text-[var(--text)] transition-colors"
       >
         {formatRest(lastSet.rest!)}
       </button>
@@ -602,7 +612,7 @@ export function SessionLog({
     }
   }
 
-  const renderSessionContent = (session: Session) => {
+  const renderSessionContent = (session: Session, isDropTarget = false) => {
     const circuits = detectCircuits(session.sets)
     const sessionEndTs = session.endTs
     const droppableId = `session-${sessionEndTs}`
@@ -614,9 +624,9 @@ export function SessionLog({
             ref={provided.innerRef}
             {...provided.droppableProps}
             data-testid="session-content"
-            className={`px-4 pb-3 space-y-2 min-h-[50px] transition-colors ${
-              snapshot.isDraggingOver ? 'bg-blue-500/5' : ''
-            }`}
+            className={`px-4 pb-3 transition-colors ${
+              snapshot.isDraggingOver ? 'bg-blue-500/10 rounded-lg' : ''
+            } ${isDropTarget ? 'min-h-[60px]' : 'min-h-[50px]'}`}
             onClick={handleClickOutside}
           >
             {circuits.map((circuit, circuitIdx) => (
@@ -626,7 +636,11 @@ export function SessionLog({
                 index={circuitIdx}
                 isDragDisabled={editingTs !== null || editingRestTs !== null}
               >
-                {(provided, snapshot) => renderCycleContent(circuit, circuitIdx, session, provided, snapshot)}
+                {(provided, snapshot) => (
+                  <div className={circuitIdx > 0 ? 'mt-2' : ''}>
+                    {renderCycleContent(circuit, circuitIdx, session, provided, snapshot)}
+                  </div>
+                )}
               </Draggable>
             ))}
             {provided.placeholder}
@@ -642,12 +656,13 @@ export function SessionLog({
   const lastCompletedSession = sessions.filter(s => s.endTs !== null).pop()
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
+    <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="bg-[var(--bg)]">
         {reversedSessions.map((session, idx) => {
           const originalIdx = sessions.length - 1 - idx
           const isActive = session.endTs === null
           const isExpanded = expandedSessionIdx === originalIdx
+          const isDragExpandTarget = isDragging && dragOverSessionIdx === originalIdx && !isExpanded
           const isLastCompleted = lastCompletedSession === session
           const totalSets = session.sets.length
           const totalVolume = session.sets.reduce((sum, set) => sum + set.kg * set.reps, 0)
@@ -657,6 +672,7 @@ export function SessionLog({
             <div
               key={session.startTs}
               className={idx > 0 ? 'border-t border-[var(--border)]' : ''}
+              onDragEnter={() => isDragging && setDragOverSessionIdx(originalIdx)}
             >
               {/* Session Header */}
               <div
@@ -664,10 +680,12 @@ export function SessionLog({
                 tabIndex={0}
                 onClick={() => setExpandedSessionIdx(isExpanded ? null : originalIdx)}
                 onKeyDown={(e) => e.key === 'Enter' && setExpandedSessionIdx(isExpanded ? null : originalIdx)}
-                className="w-full px-4 py-3 flex items-center justify-between cursor-pointer transition-colors hover:bg-[var(--surface)]/50"
+                className={`w-full px-4 py-3 flex items-center justify-between cursor-pointer transition-colors hover:bg-[var(--surface)]/50 ${
+                  isDragExpandTarget ? 'bg-blue-500/10' : ''
+                }`}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-lg">{isExpanded ? '▼' : '▶'}</span>
+                  <span className="text-lg">{isExpanded || isDragExpandTarget ? '▼' : '▶'}</span>
                   <div className="text-left">
                     <div className="font-medium flex items-center gap-2">
                       <span>{formatSessionDate(session.startTs)}</span>
@@ -743,7 +761,7 @@ export function SessionLog({
                 </div>
               </div>
 
-              {isExpanded && renderSessionContent(session)}
+              {(isExpanded || isDragExpandTarget) && renderSessionContent(session, isDragExpandTarget)}
             </div>
           )
         })}
