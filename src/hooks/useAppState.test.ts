@@ -248,6 +248,165 @@ describe('useAppState', () => {
     })
   })
 
+  describe('updateSet', () => {
+    it('updates kg on an existing set', () => {
+      const { result } = renderHook(() => useAppState())
+
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex1', kg: 50, reps: 10 })
+      })
+
+      const ts = result.current.state.history[0].ts
+
+      act(() => {
+        result.current.actions.updateSet(ts, { kg: 60 })
+      })
+
+      expect(result.current.state.history[0]).toMatchObject({
+        type: 'set',
+        exId: 'ex1',
+        kg: 60,
+        reps: 10,
+      })
+    })
+
+    it('updates reps on an existing set', () => {
+      const { result } = renderHook(() => useAppState())
+
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex1', kg: 50, reps: 10 })
+      })
+
+      const ts = result.current.state.history[0].ts
+
+      act(() => {
+        result.current.actions.updateSet(ts, { reps: 12 })
+      })
+
+      expect(result.current.state.history[0]).toMatchObject({
+        kg: 50,
+        reps: 12,
+      })
+    })
+
+    it('updates rest on an existing set', () => {
+      const { result } = renderHook(() => useAppState())
+
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex1', kg: 50, reps: 10 })
+      })
+
+      const ts = result.current.state.history[0].ts
+
+      act(() => {
+        result.current.actions.updateSet(ts, { rest: 90 })
+      })
+
+      expect(result.current.state.history[0]).toMatchObject({
+        rest: 90,
+      })
+    })
+
+    it('updates difficulty on an existing set', () => {
+      const { result } = renderHook(() => useAppState())
+
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex1', kg: 50, reps: 10 })
+      })
+
+      const ts = result.current.state.history[0].ts
+
+      act(() => {
+        result.current.actions.updateSet(ts, { difficulty: 'hard' })
+      })
+
+      expect(result.current.state.history[0]).toMatchObject({
+        difficulty: 'hard',
+      })
+    })
+
+    it('preserves other fields when updating partially', () => {
+      const { result } = renderHook(() => useAppState())
+
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex1', kg: 50, reps: 10, difficulty: 'normal' })
+      })
+
+      const ts = result.current.state.history[0].ts
+
+      act(() => {
+        result.current.actions.updateSet(ts, { kg: 60 })
+      })
+
+      expect(result.current.state.history[0]).toMatchObject({
+        type: 'set',
+        exId: 'ex1',
+        kg: 60,
+        reps: 10,
+        difficulty: 'normal',
+        ts,
+      })
+    })
+
+    it('does nothing when updating non-existent timestamp', () => {
+      const { result } = renderHook(() => useAppState())
+
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex1', kg: 50, reps: 10 })
+      })
+
+      const originalHistory = [...result.current.state.history]
+
+      act(() => {
+        result.current.actions.updateSet(999999999, { kg: 60 })
+      })
+
+      expect(result.current.state.history).toEqual(originalHistory)
+    })
+
+    it('updates multiple fields at once', () => {
+      const { result } = renderHook(() => useAppState())
+
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex1', kg: 50, reps: 10 })
+      })
+
+      const ts = result.current.state.history[0].ts
+
+      act(() => {
+        result.current.actions.updateSet(ts, { kg: 70, reps: 8, difficulty: 'hard' })
+      })
+
+      expect(result.current.state.history[0]).toMatchObject({
+        kg: 70,
+        reps: 8,
+        difficulty: 'hard',
+      })
+    })
+
+    it('only updates the targeted set in history with multiple sets', () => {
+      const { result } = renderHook(() => useAppState())
+
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex1', kg: 50, reps: 10 })
+      })
+
+      // Wait a bit to get different timestamps
+      const ts1 = result.current.state.history[0].ts
+
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex1', kg: 55, reps: 10 })
+      })
+
+      act(() => {
+        result.current.actions.updateSet(ts1, { kg: 60 })
+      })
+
+      expect(result.current.state.history[0]).toMatchObject({ kg: 60 })
+      expect(result.current.state.history[1]).toMatchObject({ kg: 55 })
+    })
+  })
+
   describe('session management', () => {
     it('endSession adds session-end marker and clears session', () => {
       const { result } = renderHook(() => useAppState())
@@ -301,6 +460,160 @@ describe('useAppState', () => {
       })
 
       expect(result.current.state.history).toHaveLength(0)
+    })
+  })
+
+  describe('moveCycleInSession', () => {
+    it('moves a cycle to a different position within a session', () => {
+      vi.useFakeTimers()
+      const { result } = renderHook(() => useAppState())
+
+      // Create 3 groups: A, B, C (each is a cycle/straight set)
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex-a', kg: 50, reps: 10 })
+      })
+      vi.advanceTimersByTime(1000)
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex-b', kg: 50, reps: 10 })
+      })
+      vi.advanceTimersByTime(1000)
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex-c', kg: 50, reps: 10 })
+      })
+
+      const tsA = result.current.state.history[0].ts
+      const tsB = result.current.state.history[1].ts
+      const tsC = result.current.state.history[2].ts
+
+      // Move A to after C (position 2)
+      act(() => {
+        result.current.actions.moveCycleInSession([tsA], 2, null)
+      })
+
+      // Order should now be: B, C, A
+      expect(result.current.state.history[0].ts).toBe(tsB)
+      expect(result.current.state.history[1].ts).toBe(tsC)
+      expect(result.current.state.history[2].ts).toBe(tsA)
+
+      vi.useRealTimers()
+    })
+
+    it('preserves timestamps when moving', () => {
+      vi.useFakeTimers()
+      const { result } = renderHook(() => useAppState())
+
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex-a', kg: 50, reps: 10 })
+      })
+      vi.advanceTimersByTime(1000)
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex-b', kg: 50, reps: 10 })
+      })
+
+      const originalTsA = result.current.state.history[0].ts
+      const originalTsB = result.current.state.history[1].ts
+
+      act(() => {
+        result.current.actions.moveCycleInSession([originalTsA], 1, null)
+      })
+
+      // Timestamps should be preserved
+      expect(result.current.state.history[0].ts).toBe(originalTsB)
+      expect(result.current.state.history[1].ts).toBe(originalTsA)
+
+      vi.useRealTimers()
+    })
+
+    it('does nothing when moving to same position', () => {
+      vi.useFakeTimers()
+      const { result } = renderHook(() => useAppState())
+
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex-a', kg: 50, reps: 10 })
+      })
+      vi.advanceTimersByTime(1000)
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex-b', kg: 50, reps: 10 })
+      })
+
+      const tsA = result.current.state.history[0].ts
+      const tsB = result.current.state.history[1].ts
+
+      act(() => {
+        result.current.actions.moveCycleInSession([tsA], 0, null)
+      })
+
+      // Order should be unchanged
+      expect(result.current.state.history[0].ts).toBe(tsA)
+      expect(result.current.state.history[1].ts).toBe(tsB)
+
+      vi.useRealTimers()
+    })
+
+    it('moves multiple sets as a cycle unit', () => {
+      vi.useFakeTimers()
+      const { result } = renderHook(() => useAppState())
+
+      // Create a drop-set (2 sets of same exercise) followed by another exercise
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex-a', kg: 50, reps: 10 })
+      })
+      vi.advanceTimersByTime(1000)
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex-a', kg: 40, reps: 12 })
+      })
+      vi.advanceTimersByTime(1000)
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex-b', kg: 60, reps: 8 })
+      })
+
+      const tsA1 = result.current.state.history[0].ts
+      const tsA2 = result.current.state.history[1].ts
+      const tsB = result.current.state.history[2].ts
+
+      // Move the entire ex-a cycle after ex-b
+      act(() => {
+        result.current.actions.moveCycleInSession([tsA1, tsA2], 1, null)
+      })
+
+      // Order should now be: B, A1, A2
+      expect(result.current.state.history[0].ts).toBe(tsB)
+      expect(result.current.state.history[1].ts).toBe(tsA1)
+      expect(result.current.state.history[2].ts).toBe(tsA2)
+
+      vi.useRealTimers()
+    })
+
+    it('moves cycle within a specific completed session', () => {
+      vi.useFakeTimers()
+      const { result } = renderHook(() => useAppState())
+
+      // Session 1: A, B
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex-a', kg: 50, reps: 10 })
+      })
+      vi.advanceTimersByTime(1000)
+      act(() => {
+        result.current.actions.logSet({ exId: 'ex-b', kg: 50, reps: 10 })
+      })
+      act(() => {
+        result.current.actions.endSession()
+      })
+
+      const sessionEndTs = result.current.state.history[2].ts
+      const tsA = result.current.state.history[0].ts
+      const tsB = result.current.state.history[1].ts
+
+      // Move B before A within session 1
+      act(() => {
+        result.current.actions.moveCycleInSession([tsB], 0, sessionEndTs)
+      })
+
+      // Order in session should now be: B, A
+      expect(result.current.state.history[0].ts).toBe(tsB)
+      expect(result.current.state.history[1].ts).toBe(tsA)
+
+      vi.useRealTimers()
     })
   })
 

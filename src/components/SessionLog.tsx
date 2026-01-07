@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import type { HistoryEntry, SetEntry } from '../lib/state'
+import type { HistoryEntry, SetEntry, Difficulty } from '../lib/state'
 import { isSetEntry, isSessionEndMarker } from '../lib/state'
 import type { Exercise } from '../hooks/useExerciseDB'
 import {
@@ -9,6 +9,7 @@ import {
   formatSessionDate,
   formatTimeOfDay,
 } from '../lib/utils'
+import { SwipeableSet } from './SwipeableSet'
 
 interface SessionLogProps {
   history: HistoryEntry[]
@@ -17,6 +18,7 @@ interface SessionLogProps {
   onResumeSession: () => void
   onDeleteSession: (sessionEndTs: number) => void
   onRemoveSet: (ts: number) => void
+  onUpdateSet?: (ts: number, updates: Partial<Omit<SetEntry, 'ts' | 'type'>>) => void
   onShareSession?: (session: Session) => void
   urlCutoffTs?: number | null  // Oldest timestamp in URL, null if all sessions fit
 }
@@ -164,11 +166,14 @@ export function SessionLog({
   onResumeSession,
   onDeleteSession,
   onRemoveSet,
+  onUpdateSet,
   onShareSession,
   urlCutoffTs,
 }: SessionLogProps) {
   const [expandedSessionIdx, setExpandedSessionIdx] = useState<number | null>(0)
   const [selectedTs, setSelectedTs] = useState<number | null>(null)
+  const [editingTs, setEditingTs] = useState<number | null>(null)
+  const [editValues, setEditValues] = useState({ kg: '', reps: '', rest: '' })
 
   const sessions = useMemo(() => parseSessions(history), [history])
 
@@ -185,11 +190,131 @@ export function SessionLog({
 
   const lastCompletedSession = sessions.filter(s => s.endTs !== null).pop()
 
+  const handleSetClick = (set: SetEntry) => {
+    if (editingTs === set.ts) return // Already in edit mode
+
+    if (selectedTs === set.ts) {
+      // Second tap - enter edit mode
+      setEditingTs(set.ts)
+      setEditValues({
+        kg: set.kg.toString(),
+        reps: set.reps.toString(),
+        rest: set.rest?.toString() ?? '',
+      })
+    } else {
+      // First tap - select
+      setSelectedTs(set.ts)
+      setEditingTs(null)
+    }
+  }
+
+  const handleSave = (ts: number, difficulty?: Difficulty) => {
+    if (onUpdateSet) {
+      const updates: Partial<Omit<SetEntry, 'ts' | 'type'>> = {
+        kg: parseFloat(editValues.kg) || 0,
+        reps: parseInt(editValues.reps) || 0,
+      }
+      if (editValues.rest) {
+        updates.rest = parseInt(editValues.rest)
+      }
+      if (difficulty) {
+        updates.difficulty = difficulty
+      }
+      onUpdateSet(ts, updates)
+    }
+    setEditingTs(null)
+    setSelectedTs(null)
+  }
+
+  const handleCancel = () => {
+    setEditingTs(null)
+    setSelectedTs(null)
+  }
+
+  const handleClickOutside = () => {
+    if (editingTs !== null || selectedTs !== null) {
+      setEditingTs(null)
+      setSelectedTs(null)
+    }
+  }
+
+  const renderEditUI = (set: SetEntry) => (
+    <div className="bg-[var(--surface)] rounded-lg p-3 space-y-3" onClick={e => e.stopPropagation()}>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          value={editValues.kg}
+          onChange={(e) => setEditValues(prev => ({ ...prev, kg: e.target.value }))}
+          className="w-16 px-2 py-1 bg-[var(--bg)] border border-[var(--border)] rounded text-sm"
+          placeholder="kg"
+        />
+        <span className="text-sm text-[var(--text-muted)]">kg ×</span>
+        <input
+          type="number"
+          value={editValues.reps}
+          onChange={(e) => setEditValues(prev => ({ ...prev, reps: e.target.value }))}
+          className="w-16 px-2 py-1 bg-[var(--bg)] border border-[var(--border)] rounded text-sm"
+          placeholder="reps"
+        />
+        <span className="text-sm text-[var(--text-muted)]">reps</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          value={editValues.rest}
+          onChange={(e) => setEditValues(prev => ({ ...prev, rest: e.target.value }))}
+          className="w-16 px-2 py-1 bg-[var(--bg)] border border-[var(--border)] rounded text-sm"
+          placeholder="rest"
+        />
+        <span className="text-sm text-[var(--text-muted)]">s rest</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => handleSave(set.ts, 'easy')}
+          className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-medium"
+          aria-label="Easy"
+        >
+          Easy
+        </button>
+        <button
+          onClick={() => handleSave(set.ts, 'normal')}
+          className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-medium"
+          aria-label="Normal"
+        >
+          Normal
+        </button>
+        <button
+          onClick={() => handleSave(set.ts, 'hard')}
+          className="px-2 py-1 bg-orange-500/20 text-orange-400 rounded text-xs font-medium"
+          aria-label="Hard"
+        >
+          Hard
+        </button>
+      </div>
+      <div className="flex items-center gap-2 pt-2 border-t border-[var(--border)]">
+        <button
+          onClick={() => handleSave(set.ts)}
+          className="px-3 py-1 bg-[var(--success)] text-white rounded text-sm font-medium"
+          aria-label="Save"
+        >
+          Save
+        </button>
+        <button
+          onClick={handleCancel}
+          className="px-3 py-1 bg-[var(--surface)] border border-[var(--border)] rounded text-sm"
+          aria-label="Cancel"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+
   const renderSessionContent = (session: Session) => {
     const circuits = detectCircuits(session.sets)
 
     return (
-      <div className="px-4 pb-3 space-y-1" onClick={() => setSelectedTs(null)}>
+      <div data-testid="session-content" className="px-4 pb-3 space-y-1" onClick={handleClickOutside}>
         {circuits.map((circuit, circuitIdx) => {
           const allSets = circuit.rounds.flat()
           const lastSet = allSets[allSets.length - 1]
@@ -268,41 +393,49 @@ export function SessionLog({
               <div key={circuitIdx}>
                 <div className="bg-[var(--surface)] rounded-lg p-3">
                   <div className="font-medium text-sm mb-2">{name}</div>
-                  <div className="flex flex-wrap items-center gap-1">
+                  <div className="space-y-2">
                     {allSets.map((set, i) => {
                       const isSelected = selectedTs === set.ts
+                      const isEditing = editingTs === set.ts
+
+                      if (isEditing) {
+                        return (
+                          <div key={set.ts}>
+                            {renderEditUI(set)}
+                          </div>
+                        )
+                      }
 
                       return (
-                        <div key={set.ts} className="flex items-center gap-1">
-                          {isSelected ? (
+                        <SwipeableSet
+                          key={set.ts}
+                          onDelete={() => onRemoveSet(set.ts)}
+                          onSwipeStart={() => {
+                            setSelectedTs(null)
+                            setEditingTs(null)
+                          }}
+                          forceClose={selectedTs !== set.ts}
+                        >
+                          <div className="flex items-center gap-1">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
-                                onRemoveSet(set.ts)
-                                setSelectedTs(null)
+                                handleSetClick(set)
                               }}
-                              className="px-3 py-1 bg-red-500 text-white rounded text-sm font-medium"
-                            >
-                              Delete
-                            </button>
-                          ) : (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setSelectedTs(set.ts)
-                              }}
-                              className={`px-2 py-1 bg-[var(--bg)] rounded text-sm ${getDifficultyBorderColor(set.difficulty)}`}
+                              className={`px-2 py-1 bg-[var(--bg)] rounded text-sm ${getDifficultyBorderColor(set.difficulty)} ${
+                                isSelected ? 'ring-2 ring-blue-500/50' : ''
+                              }`}
                             >
                               <span className="text-[var(--text-muted)]">{i + 1}.</span>{' '}
                               <span className="font-medium">{set.kg}kg × {set.reps}</span>
                             </button>
-                          )}
-                          {set.rest && i < allSets.length - 1 && !isSelected && (
-                            <span className="text-xs text-[var(--text-muted)] px-1">
-                              {formatRest(set.rest)}
-                            </span>
-                          )}
-                        </div>
+                            {set.rest && i < allSets.length - 1 && (
+                              <span className="text-xs text-[var(--text-muted)] px-1">
+                                {formatRest(set.rest)}
+                              </span>
+                            )}
+                          </div>
+                        </SwipeableSet>
                       )
                     })}
                   </div>

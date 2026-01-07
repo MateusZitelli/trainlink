@@ -232,6 +232,90 @@ export function useAppState() {
     }))
   }, [])
 
+  const updateSet = useCallback((ts: number, updates: Partial<Omit<SetEntry, 'ts' | 'type'>>) => {
+    updateStateFn(prev => ({
+      ...prev,
+      history: prev.history.map(entry =>
+        isSetEntry(entry) && entry.ts === ts
+          ? { ...entry, ...updates }
+          : entry
+      ),
+    }))
+  }, [])
+
+  const restoreSets = useCallback((sets: SetEntry[]) => {
+    updateStateFn(prev => ({
+      ...prev,
+      history: [...prev.history, ...sets].sort((a, b) => a.ts - b.ts),
+    }))
+  }, [])
+
+  const moveCycleInSession = useCallback((
+    cycleSetTimestamps: number[],
+    targetIndex: number,
+    sessionEndTs: number | null
+  ) => {
+    updateStateFn(prev => {
+      // Find session bounds
+      let endIdx = prev.history.length
+      let startIdx = 0
+
+      if (sessionEndTs !== null) {
+        // Find the session end marker
+        endIdx = prev.history.findIndex(
+          e => isSessionEndMarker(e) && e.ts === sessionEndTs
+        )
+        if (endIdx === -1) return prev
+
+        // Find the start of this session (after previous session-end or start of history)
+        for (let i = endIdx - 1; i >= 0; i--) {
+          if (isSessionEndMarker(prev.history[i])) {
+            startIdx = i + 1
+            break
+          }
+        }
+      } else {
+        // Current session - find the last session-end marker
+        const lastEndIdx = findLastSessionEndIndex(prev.history)
+        startIdx = lastEndIdx === -1 ? 0 : lastEndIdx + 1
+      }
+
+      // Extract session entries (sets only, no session-end markers)
+      const before = prev.history.slice(0, startIdx)
+      const sessionEntries = prev.history.slice(startIdx, endIdx).filter(isSetEntry)
+      const after = prev.history.slice(endIdx)
+
+      // Find current index of the cycle
+      const cycleIndices = cycleSetTimestamps.map(ts =>
+        sessionEntries.findIndex(e => e.ts === ts)
+      ).filter(i => i !== -1)
+
+      if (cycleIndices.length === 0) return prev
+
+      const cycleStartIdx = Math.min(...cycleIndices)
+
+      // Don't do anything if moving to same position
+      if (cycleStartIdx === targetIndex) return prev
+
+      // Remove cycle sets from session
+      const cycleSets = cycleSetTimestamps
+        .map(ts => sessionEntries.find(e => e.ts === ts))
+        .filter((s): s is SetEntry => s !== undefined)
+
+      const remainingSets = sessionEntries.filter(
+        e => !cycleSetTimestamps.includes(e.ts)
+      )
+
+      // Insert cycle at target position (targetIndex is the final position for the first set of the cycle)
+      remainingSets.splice(Math.min(remainingSets.length, Math.max(0, targetIndex)), 0, ...cycleSets)
+
+      return {
+        ...prev,
+        history: [...before, ...remainingSets, ...after],
+      }
+    })
+  }, [])
+
   return {
     state,
     actions: {
@@ -251,6 +335,9 @@ export function useAppState() {
       moveDay,
       setRestTime,
       removeSet,
+      updateSet,
+      restoreSets,
+      moveCycleInSession,
     },
   }
 }
