@@ -597,8 +597,8 @@ export function SessionLog({
     return (
       <Droppable droppableId={droppableId} type="CYCLE">
         {(dropProvided, dropSnapshot) => {
-          // Expand when explicitly expanded OR when dragging over a collapsed session
-          const showCycles = isExpanded || dropSnapshot.isDraggingOver
+          // When dragging, ALL sessions expand to show cycles
+          const showCycles = isExpanded || isDragActive
 
           return (
             <div
@@ -610,7 +610,6 @@ export function SessionLog({
               } ${dropSnapshot.isDraggingOver ? 'bg-blue-500/10' : ''}`}
               onClick={handleClickOutside}
             >
-              {/* Show cycles when expanded OR when dragging over */}
               {showCycles && circuits.map((circuit, circuitIdx) => (
                 <Draggable
                   key={`cycle-${sessionEndTs}-${circuitIdx}`}
@@ -625,30 +624,15 @@ export function SessionLog({
                       {...provided.dragHandleProps}
                       className={`${circuitIdx > 0 ? 'pt-3' : ''} ${snapshot.isDragging ? 'opacity-90 shadow-2xl z-50' : ''}`}
                     >
-                      {/* Drop indicator line above each cycle (except first) during drag */}
-                      {circuitIdx > 0 && isDragActive && !snapshot.isDragging && (
-                        <div className="h-1 -mt-2 mb-1 mx-2 rounded-full bg-blue-500/30" />
-                      )}
                       {renderCycleCard(circuit, circuitIdx, circuits.length, snapshot.isDragging)}
                     </div>
                   )}
                 </Draggable>
               ))}
 
-              {/* Drop indicator at the end of the list during drag */}
-              {showCycles && isDragActive && circuits.length > 0 && (
-                <div className="h-1 mt-2 mx-2 rounded-full bg-blue-500/30" />
-              )}
-
-              {/* Collapsed drop indicator - only when not showing cycles */}
+              {/* Minimal collapsed indicator - only when not dragging */}
               {!showCycles && (
-                <div className={`text-center text-xs rounded transition-all ${
-                  isDragActive
-                    ? 'py-1 text-[var(--text-muted)] border border-dashed border-[var(--border)]'
-                    : 'py-0.5 text-[var(--text-muted)]/50'
-                }`}>
-                  {isDragActive ? 'Drop to add' : '·'}
-                </div>
+                <div className="py-0.5 text-center text-xs text-[var(--text-muted)]/50">·</div>
               )}
 
               {dropProvided.placeholder}
