@@ -8,7 +8,14 @@ describe('SessionLog', () => {
     exerciseId: id,
     name: id === 'bench' ? 'Bench Press' : 'Barbell Row',
     targetMuscles: ['chest'],
+    secondaryMuscles: [],
     equipment: 'barbell',
+    category: 'strength',
+    imageUrls: [],
+    instructions: [],
+    level: 'intermediate',
+    force: 'push',
+    mechanic: 'compound',
   }))
 
   const createSet = (exId: string, kg: number, reps: number, ts: number): SetEntry => ({
