@@ -1,73 +1,63 @@
-# React + TypeScript + Vite
+# TrainLink
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An offline-first workout tracker and training planner built as a Progressive Web App.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Workout Planning
+- Create multiple training days (Push, Pull, Legs, etc.)
+- Add exercises from a database of 1000+ exercises
+- Drag-and-drop reordering of exercises and days
 
-## React Compiler
+### Session Logging
+- Log sets with weight, reps, and difficulty
+- Real-time rest timer with audio/vibration alerts
+- Drag sets between sessions or reorder within sessions
+- Undo deleted sets
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Intelligent Predictions
+- Cycle detection for repeating exercise patterns
+- Drop set trend analysis
+- Historical pattern matching for exercise sequences
+- Per-exercise default rest times
 
-## Expanding the ESLint configuration
+### Session Sharing
+- Generate shareable URLs for completed workouts
+- Compare sessions with previous workouts
+- View progress metrics and set breakdowns
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Exercise Database
+- 1000+ exercises with images and instructions
+- Filter by muscle group, equipment, difficulty, and more
+- Full-text search
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Offline-First
+- All data stored locally in URL hash + localStorage
+- Installable as standalone PWA
+- Works without internet connection
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Tech Stack
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- React 19 + TypeScript
+- Tailwind CSS
+- Vite + PWA plugin
+- @hello-pangea/dnd for drag-and-drop
+
+## Development
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Testing
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+npm test
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Build
+
+```bash
+npm run build
 ```
