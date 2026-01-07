@@ -1,23 +1,12 @@
 import { useState, useMemo, useCallback } from 'react'
 import {
-  DndContext,
-  closestCenter,
-  DragOverlay,
-  useSensor,
-  useSensors,
-  PointerSensor,
-  TouchSensor,
-  useDroppable,
-  type DragStartEvent,
-  type DragEndEvent,
-  type DragOverEvent,
-} from '@dnd-kit/core'
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+  DragDropContext,
+  Droppable,
+  Draggable,
+  type DropResult,
+  type DraggableProvided,
+  type DraggableStateSnapshot,
+} from '@hello-pangea/dnd'
 import type { HistoryEntry, SetEntry, Difficulty } from '../lib/state'
 import { isSetEntry, isSessionEndMarker } from '../lib/state'
 import type { Exercise } from '../hooks/useExerciseDB'
@@ -169,68 +158,6 @@ function parseSessions(history: HistoryEntry[]): Session[] {
   return sessions
 }
 
-// Sortable cycle group component - entire element is draggable
-interface SortableCycleProps {
-  id: string
-  children: React.ReactNode
-  disabled?: boolean
-}
-
-function SortableCycle({ id, children, disabled }: SortableCycleProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id, disabled })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    touchAction: 'manipulation', // Allows scroll but enables drag
-  }
-
-  // Remove role="button" from attributes to avoid conflicts
-  const { role: _role, ...restAttributes } = attributes
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...restAttributes}
-      {...(disabled ? {} : listeners)}
-      data-sortable
-    >
-      {children}
-    </div>
-  )
-}
-
-// Droppable session zone for cross-session moves
-interface SessionDropZoneProps {
-  sessionEndTs: number | null
-  isOver: boolean
-  children: React.ReactNode
-}
-
-function SessionDropZone({ sessionEndTs, children }: SessionDropZoneProps) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: `session-drop-${sessionEndTs}`,
-  })
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`transition-colors ${isOver ? 'bg-blue-500/10' : ''}`}
-    >
-      {children}
-    </div>
-  )
-}
-
 export function SessionLog({
   history,
   getExercise,
@@ -248,28 +175,10 @@ export function SessionLog({
   const [selectedTs, setSelectedTs] = useState<number | null>(null)
   const [editingTs, setEditingTs] = useState<number | null>(null)
   const [editValues, setEditValues] = useState({ kg: '', reps: '', rest: '' })
-  const [activeDragId, setActiveDragId] = useState<string | null>(null)
-  const [activeDragData, setActiveDragData] = useState<{ circuit: CircuitGroup; session: Session } | null>(null)
   const [editingRestTs, setEditingRestTs] = useState<number | null>(null)
   const [editRestValue, setEditRestValue] = useState('')
 
   const sessions = useMemo(() => parseSessions(history), [history])
-
-  // Configure sensors for drag and drop - reduced delay for better responsiveness
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        delay: 150,
-        tolerance: 8,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 150,
-        tolerance: 8,
-      },
-    })
-  )
 
   const isShareable = (session: Session): boolean => {
     if (urlCutoffTs === null || urlCutoffTs === undefined) return true
@@ -347,133 +256,69 @@ export function SessionLog({
     }
   }, [editingTs, selectedTs])
 
-  // Drag and drop handlers
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    const id = event.active.id as string
-    setActiveDragId(id)
-    // Clear selection when dragging starts
-    setSelectedTs(null)
-    setEditingTs(null)
+  // Drag and drop handler
+  const handleDragEnd = useCallback((result: DropResult) => {
+    const { source, destination, draggableId } = result
 
-    // Parse the drag ID to get cycle info for overlay
-    const match = id.match(/session-(.+)-cycle-(\d+)/)
-    if (match) {
-      const sessionEndTs = match[1] === 'null' ? null : parseInt(match[1])
-      const cycleIdx = parseInt(match[2])
-      const session = sessions.find(s =>
-        (s.endTs === null && sessionEndTs === null) || s.endTs === sessionEndTs
-      )
-      if (session) {
-        const circuits = detectCircuits(session.sets)
-        const circuit = circuits[cycleIdx]
-        if (circuit) {
-          setActiveDragData({ circuit, session })
-        }
-      }
-    }
-  }, [sessions])
+    if (!destination) return
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event
-    setActiveDragId(null)
-    setActiveDragData(null)
+    // Parse draggable ID: format is "cycle-{sessionEndTs}-{cycleIndex}"
+    const match = draggableId.match(/cycle-(.+)-(\d+)/)
+    if (!match) return
 
-    if (!over || active.id === over.id) return
+    const sourceSessionEndTs = match[1] === 'null' ? null : parseInt(match[1])
+    const sourceCycleIdx = parseInt(match[2])
 
-    // Parse the drag IDs: format is "session-{endTs}-cycle-{index}" or "session-drop-{endTs}"
-    const activeMatch = (active.id as string).match(/session-(.+)-cycle-(\d+)/)
-    if (!activeMatch) return
+    // Parse destination droppable ID: format is "session-{sessionEndTs}"
+    const destMatch = destination.droppableId.match(/session-(.+)/)
+    if (!destMatch) return
 
-    const activeSessionEndTs = activeMatch[1] === 'null' ? null : parseInt(activeMatch[1])
-    const activeCycleIdx = parseInt(activeMatch[2])
+    const destSessionEndTs = destMatch[1] === 'null' ? null : parseInt(destMatch[1])
 
+    // Find source session and cycle
     const sourceSession = sessions.find(s =>
-      (s.endTs === null && activeSessionEndTs === null) ||
-      s.endTs === activeSessionEndTs
+      (s.endTs === null && sourceSessionEndTs === null) || s.endTs === sourceSessionEndTs
     )
     if (!sourceSession) return
 
     const circuits = detectCircuits(sourceSession.sets)
-    const activeCycle = circuits[activeCycleIdx]
+    const activeCycle = circuits[sourceCycleIdx]
     if (!activeCycle) return
 
     const cycleTimestamps = activeCycle.rounds.flat().map(s => s.ts)
 
-    // Check if dropping on a session drop zone
-    const sessionDropMatch = (over.id as string).match(/session-drop-(.+)/)
-    if (sessionDropMatch) {
-      const targetSessionEndTs = sessionDropMatch[1] === 'null' ? null : parseInt(sessionDropMatch[1])
-      if (activeSessionEndTs !== targetSessionEndTs && onMoveCycleToSession) {
-        onMoveCycleToSession(cycleTimestamps, targetSessionEndTs)
-      }
-      return
-    }
-
-    // Check if dropping on another cycle
-    const overMatch = (over.id as string).match(/session-(.+)-cycle-(\d+)/)
-    if (!overMatch) return
-
-    const overSessionEndTs = overMatch[1] === 'null' ? null : parseInt(overMatch[1])
-    const overCycleIdx = parseInt(overMatch[2])
-
     // Check if cross-session move
-    if (activeSessionEndTs !== overSessionEndTs) {
-      // Cross-session move - use onMoveCycleToSession
+    if (sourceSessionEndTs !== destSessionEndTs) {
+      // Cross-session move
       if (onMoveCycleToSession) {
-        onMoveCycleToSession(cycleTimestamps, overSessionEndTs)
+        onMoveCycleToSession(cycleTimestamps, destSessionEndTs)
+        // Expand destination session
+        const destSessionIdx = sessions.findIndex(s =>
+          (s.endTs === null && destSessionEndTs === null) || s.endTs === destSessionEndTs
+        )
+        if (destSessionIdx !== -1) {
+          setExpandedSessionIdx(destSessionIdx)
+        }
       }
     } else {
-      // Within-session reorder - use onMoveCycleInSession
+      // Within-session reorder
       if (onMoveCycleInSession) {
         const targetSession = sessions.find(s =>
-          (s.endTs === null && overSessionEndTs === null) ||
-          s.endTs === overSessionEndTs
+          (s.endTs === null && destSessionEndTs === null) || s.endTs === destSessionEndTs
         )
         if (!targetSession) return
 
         const targetCircuits = detectCircuits(targetSession.sets)
         let targetSetIndex = 0
-        for (let i = 0; i < overCycleIdx; i++) {
+        for (let i = 0; i < destination.index; i++) {
           targetSetIndex += targetCircuits[i].rounds.flat().length
         }
 
-        onMoveCycleInSession(cycleTimestamps, targetSetIndex, activeSessionEndTs)
+        onMoveCycleInSession(cycleTimestamps, targetSetIndex, sourceSessionEndTs)
       }
     }
   }, [sessions, onMoveCycleInSession, onMoveCycleToSession])
-
-  // Auto-expand sessions when dragging over them
-  const handleDragOver = useCallback((event: DragOverEvent) => {
-    const { over } = event
-    if (!over) return
-
-    const overId = over.id as string
-
-    // Check if over a session drop zone
-    const sessionDropMatch = overId.match(/session-drop-(.+)/)
-    if (sessionDropMatch) {
-      const targetEndTs = sessionDropMatch[1] === 'null' ? null : parseInt(sessionDropMatch[1])
-      const sessionIdx = sessions.findIndex(s =>
-        (s.endTs === null && targetEndTs === null) || s.endTs === targetEndTs
-      )
-      if (sessionIdx !== -1 && expandedSessionIdx !== sessionIdx) {
-        setExpandedSessionIdx(sessionIdx)
-      }
-      return
-    }
-
-    // Check if over a cycle in a session
-    const cycleMatch = overId.match(/session-(.+)-cycle-/)
-    if (cycleMatch) {
-      const targetEndTs = cycleMatch[1] === 'null' ? null : parseInt(cycleMatch[1])
-      const sessionIdx = sessions.findIndex(s =>
-        (s.endTs === null && targetEndTs === null) || s.endTs === targetEndTs
-      )
-      if (sessionIdx !== -1 && expandedSessionIdx !== sessionIdx) {
-        setExpandedSessionIdx(sessionIdx)
-      }
-    }
-  }, [sessions, expandedSessionIdx])
 
   // Handle inter-cycle rest editing
   const handleRestClick = useCallback((set: SetEntry, e: React.MouseEvent) => {
@@ -678,7 +523,13 @@ export function SessionLog({
     )
   }
 
-  const renderCycleContent = (circuit: CircuitGroup, circuitIdx: number, session: Session) => {
+  const renderCycleContent = (
+    circuit: CircuitGroup,
+    circuitIdx: number,
+    session: Session,
+    provided: DraggableProvided,
+    snapshot: DraggableStateSnapshot
+  ) => {
     const allSets = circuit.rounds.flat()
     const lastSet = allSets[allSets.length - 1]
     const circuits = detectCircuits(session.sets)
@@ -691,12 +542,17 @@ export function SessionLog({
       })
 
       return (
-        <div>
-          <div className="bg-[var(--surface)] rounded-lg p-3">
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+          className={snapshot.isDragging ? 'opacity-90 shadow-2xl' : ''}
+        >
+          <div className={`bg-[var(--surface)] rounded-lg p-3 ${snapshot.isDragging ? 'ring-2 ring-blue-500' : ''}`}>
             <div className="font-medium text-sm mb-2 flex items-center gap-2">
               <span className="text-[var(--success)]">⟳</span>
               <span>{exerciseNames.join(' + ')}</span>
-              <span className="ml-auto text-[var(--text-muted)] select-none">
+              <span className="ml-auto text-[var(--text-muted)] select-none cursor-grab">
                 ⋮⋮
               </span>
             </div>
@@ -723,11 +579,16 @@ export function SessionLog({
       const name = exercise?.name ?? exId
 
       return (
-        <div>
-          <div className="bg-[var(--surface)] rounded-lg p-3">
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+          className={snapshot.isDragging ? 'opacity-90 shadow-2xl' : ''}
+        >
+          <div className={`bg-[var(--surface)] rounded-lg p-3 ${snapshot.isDragging ? 'ring-2 ring-blue-500' : ''}`}>
             <div className="font-medium text-sm mb-2 flex items-center gap-2">
               <span>{name}</span>
-              <span className="ml-auto text-[var(--text-muted)] select-none">
+              <span className="ml-auto text-[var(--text-muted)] select-none cursor-grab">
                 ⋮⋮
               </span>
             </div>
@@ -744,25 +605,36 @@ export function SessionLog({
   const renderSessionContent = (session: Session) => {
     const circuits = detectCircuits(session.sets)
     const sessionEndTs = session.endTs
-    const cycleIds = circuits.map((_, idx) => `session-${sessionEndTs}-cycle-${idx}`)
+    const droppableId = `session-${sessionEndTs}`
 
     return (
-      <SortableContext items={cycleIds} strategy={verticalListSortingStrategy}>
-        <div data-testid="session-content" className="px-4 pb-3 space-y-2" onClick={handleClickOutside}>
-          {circuits.map((circuit, circuitIdx) => (
-            <SortableCycle
-              key={cycleIds[circuitIdx]}
-              id={cycleIds[circuitIdx]}
-              disabled={editingTs !== null || editingRestTs !== null}
-            >
-              {renderCycleContent(circuit, circuitIdx, session)}
-            </SortableCycle>
-          ))}
-        </div>
-      </SortableContext>
+      <Droppable droppableId={droppableId} type="CYCLE">
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            data-testid="session-content"
+            className={`px-4 pb-3 space-y-2 min-h-[50px] transition-colors ${
+              snapshot.isDraggingOver ? 'bg-blue-500/5' : ''
+            }`}
+            onClick={handleClickOutside}
+          >
+            {circuits.map((circuit, circuitIdx) => (
+              <Draggable
+                key={`cycle-${sessionEndTs}-${circuitIdx}`}
+                draggableId={`cycle-${sessionEndTs}-${circuitIdx}`}
+                index={circuitIdx}
+                isDragDisabled={editingTs !== null || editingRestTs !== null}
+              >
+                {(provided, snapshot) => renderCycleContent(circuit, circuitIdx, session, provided, snapshot)}
+              </Draggable>
+            ))}
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
     )
   }
-
 
   if (sessions.length === 0) return null
 
@@ -770,13 +642,7 @@ export function SessionLog({
   const lastCompletedSession = sessions.filter(s => s.endTs !== null).pop()
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-    >
+    <DragDropContext onDragEnd={handleDragEnd}>
       <div className="bg-[var(--bg)]">
         {reversedSessions.map((session, idx) => {
           const originalIdx = sessions.length - 1 - idx
@@ -788,22 +654,18 @@ export function SessionLog({
           const uniqueExercises = new Set(session.sets.map(s => s.exId)).size
 
           return (
-            <SessionDropZone
+            <div
               key={session.startTs}
-              sessionEndTs={session.endTs}
-              isOver={false}
+              className={idx > 0 ? 'border-t border-[var(--border)]' : ''}
             >
-              <div className={idx > 0 ? 'border-t border-[var(--border)]' : ''}>
-                {/* Session Header - using div with role="button" to avoid nested buttons */}
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setExpandedSessionIdx(isExpanded ? null : originalIdx)}
-                  onKeyDown={(e) => e.key === 'Enter' && setExpandedSessionIdx(isExpanded ? null : originalIdx)}
-                  className={`w-full px-4 py-3 flex items-center justify-between cursor-pointer transition-colors ${
-                    activeDragId && !isExpanded ? 'hover:bg-[var(--surface)]' : ''
-                  }`}
-                >
+              {/* Session Header */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setExpandedSessionIdx(isExpanded ? null : originalIdx)}
+                onKeyDown={(e) => e.key === 'Enter' && setExpandedSessionIdx(isExpanded ? null : originalIdx)}
+                className="w-full px-4 py-3 flex items-center justify-between cursor-pointer transition-colors hover:bg-[var(--surface)]/50"
+              >
                 <div className="flex items-center gap-3">
                   <span className="text-lg">{isExpanded ? '▼' : '▶'}</span>
                   <div className="text-left">
@@ -881,9 +743,8 @@ export function SessionLog({
                 </div>
               </div>
 
-                {isExpanded && renderSessionContent(session)}
-              </div>
-            </SessionDropZone>
+              {isExpanded && renderSessionContent(session)}
+            </div>
           )
         })}
 
@@ -896,43 +757,6 @@ export function SessionLog({
           />
         )}
       </div>
-
-      {/* Drag overlay - shows actual cycle content */}
-      <DragOverlay dropAnimation={null}>
-        {activeDragId && activeDragData ? (
-          <div className="bg-[var(--surface)] rounded-lg p-3 shadow-2xl border border-[var(--border)] scale-[1.02]">
-            {activeDragData.circuit.isCircuit ? (
-              <>
-                <div className="font-medium text-sm mb-2 flex items-center gap-2">
-                  <span className="text-[var(--success)]">⟳</span>
-                  <span>
-                    {activeDragData.circuit.pattern.map(id => {
-                      const name = getExercise(id)?.name ?? id
-                      return name.split(' ').slice(0, 2).join(' ')
-                    }).join(' + ')}
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-1 text-sm">
-                  {activeDragData.circuit.rounds.length} rounds · {activeDragData.circuit.rounds.flat().length} sets
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="font-medium text-sm mb-1">
-                  {getExercise(activeDragData.circuit.pattern[0])?.name ?? activeDragData.circuit.pattern[0]}
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {activeDragData.circuit.rounds.flat().map((set, i) => (
-                    <span key={set.ts} className="text-sm px-2 py-0.5 bg-[var(--bg)] rounded">
-                      {i + 1}.{set.kg}×{set.reps}
-                    </span>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
+    </DragDropContext>
   )
 }
