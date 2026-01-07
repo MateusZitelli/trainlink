@@ -518,17 +518,17 @@ export function SessionLog({
     }
 
     return (
-      <div key={set.ts} className="flex items-center gap-1">
+      <div key={set.ts} className="flex items-center">
         <button
           onClick={(e) => handleSetClick(set, e)}
-          className={`px-3 py-1.5 bg-[var(--bg)] rounded-lg text-sm transition-all ${getDifficultyBorderColor(set.difficulty)} ${
+          className={`px-2 py-1 bg-[var(--bg)] rounded text-sm transition-all ${getDifficultyBorderColor(set.difficulty)} ${
             isSelected
               ? 'ring-2 ring-blue-500 shadow-md scale-[1.02]'
               : 'hover:bg-[var(--surface)]'
           }`}
         >
-          <span className="text-[var(--text-muted)]">{index + 1}.</span>{' '}
-          <span className="font-medium">{set.kg}kg × {set.reps}</span>
+          <span className="text-[var(--text-muted)] text-xs">{index + 1}.</span>
+          <span className="font-medium">{set.kg}×{set.reps}</span>
         </button>
         {set.rest && index < totalSets - 1 && (
           <span className="text-xs text-[var(--text-muted)] px-1">
@@ -668,7 +668,7 @@ export function SessionLog({
                 ⋮⋮
               </span>
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-1">
               {allSets.map((set, i) => renderSetButton(set, i, allSets.length))}
             </div>
           </div>

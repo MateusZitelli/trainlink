@@ -51,14 +51,14 @@ describe('SessionLog', () => {
       render(<SessionLog {...defaultProps} history={historyWithSets} />)
 
       expect(screen.getByText(/Bench Press/i)).toBeInTheDocument()
-      expect(screen.getByText('60kg × 10')).toBeInTheDocument()
+      expect(screen.getByText('60×10')).toBeInTheDocument()
     })
 
     it('shows action bar when a set is selected', () => {
       render(<SessionLog {...defaultProps} history={historyWithSets} />)
 
       // Click to select the set
-      const setButton = screen.getByText('60kg × 10')
+      const setButton = screen.getByText('60×10')
       fireEvent.click(setButton)
 
       // Action bar should appear with Edit and Delete buttons
@@ -77,7 +77,7 @@ describe('SessionLog', () => {
       )
 
       // Select the set
-      fireEvent.click(screen.getByText('60kg × 10'))
+      fireEvent.click(screen.getByText('60×10'))
 
       // Click delete in action bar
       fireEvent.click(screen.getByRole('button', { name: /delete/i }))
@@ -89,7 +89,7 @@ describe('SessionLog', () => {
       render(<SessionLog {...defaultProps} history={historyWithSets} />)
 
       // Select the set
-      fireEvent.click(screen.getByText('60kg × 10'))
+      fireEvent.click(screen.getByText('60×10'))
 
       // Action bar should be visible
       expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument()
@@ -112,7 +112,7 @@ describe('SessionLog', () => {
       render(<SessionLog {...defaultProps} history={historyWithSets} />)
 
       // First tap - select the set
-      const setButton = screen.getByText('60kg × 10')
+      const setButton = screen.getByText('60×10')
       fireEvent.click(setButton)
 
       // Second tap - enter edit mode
@@ -127,7 +127,7 @@ describe('SessionLog', () => {
       render(<SessionLog {...defaultProps} history={historyWithSets} />)
 
       // Select the set
-      fireEvent.click(screen.getByText('60kg × 10'))
+      fireEvent.click(screen.getByText('60×10'))
 
       // Click Edit in action bar
       fireEvent.click(screen.getByRole('button', { name: /edit/i }))
@@ -141,7 +141,7 @@ describe('SessionLog', () => {
       render(<SessionLog {...defaultProps} history={historyWithSets} />)
 
       // Select and enter edit mode
-      const setButton = screen.getByText('60kg × 10')
+      const setButton = screen.getByText('60×10')
       fireEvent.click(setButton)
       fireEvent.click(setButton)
 
@@ -160,7 +160,7 @@ describe('SessionLog', () => {
       )
 
       // Select and enter edit mode
-      const setButton = screen.getByText('60kg × 10')
+      const setButton = screen.getByText('60×10')
       fireEvent.click(setButton)
       fireEvent.click(setButton)
 
@@ -181,7 +181,7 @@ describe('SessionLog', () => {
       render(<SessionLog {...defaultProps} history={historyWithSets} />)
 
       // Select and enter edit mode
-      const setButton = screen.getByText('60kg × 10')
+      const setButton = screen.getByText('60×10')
       fireEvent.click(setButton)
       fireEvent.click(setButton)
 
@@ -193,7 +193,7 @@ describe('SessionLog', () => {
 
       // Should be back to display mode
       expect(screen.queryByDisplayValue('60')).not.toBeInTheDocument()
-      expect(screen.getByText('60kg × 10')).toBeInTheDocument()
+      expect(screen.getByText('60×10')).toBeInTheDocument()
     })
 
     it('allows editing rest time', () => {
@@ -212,7 +212,7 @@ describe('SessionLog', () => {
       )
 
       // Select and enter edit mode on first set
-      const setButton = screen.getByText('60kg × 10')
+      const setButton = screen.getByText('60×10')
       fireEvent.click(setButton)
       fireEvent.click(setButton)
 
@@ -233,7 +233,7 @@ describe('SessionLog', () => {
       render(<SessionLog {...defaultProps} history={historyWithSets} />)
 
       // Select and enter edit mode
-      const setButton = screen.getByText('60kg × 10')
+      const setButton = screen.getByText('60×10')
       fireEvent.click(setButton)
       fireEvent.click(setButton)
 
@@ -253,7 +253,7 @@ describe('SessionLog', () => {
       )
 
       // Select and enter edit mode
-      const setButton = screen.getByText('60kg × 10')
+      const setButton = screen.getByText('60×10')
       fireEvent.click(setButton)
       fireEvent.click(setButton)
 
