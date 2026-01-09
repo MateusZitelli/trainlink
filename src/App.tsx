@@ -6,6 +6,7 @@ import { SearchView } from './components/SearchView'
 import { SessionLog, type Session } from './components/SessionLog'
 import { QuickExercise } from './components/QuickExercise'
 import { ShareSessionView } from './components/ShareSessionView'
+import { CreateDayModal } from './components/CreateDayModal'
 import { Toast } from './components/Toast'
 import { useExerciseDB } from './hooks/useExerciseDB'
 import { useUndoableDelete } from './hooks/useUndoableDelete'
@@ -17,6 +18,7 @@ import './index.css'
 function App() {
   const { state, actions } = useAppState()
   const [showSearch, setShowSearch] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   // Undo functionality for set deletion
   const { deleteSet, undo, dismiss, canUndo, undoMessage } = useUndoableDelete({
@@ -25,7 +27,7 @@ function App() {
   })
   const [sessionShareData, setSessionShareData] = useState<ShareSessionData | null>(null)
   const [urlCutoffTs, setUrlCutoffTs] = useState<number | null>(null)
-  const { getExercise, fetchExercises, dbReady } = useExerciseDB()
+  const { getExercise, fetchExercises, getAllExercises, dbReady } = useExerciseDB()
 
   const activeDay = state.plan.days.find(d => d.name === state.session?.activeDay)
 
@@ -186,7 +188,7 @@ function App() {
         days={state.plan.days}
         activeDay={state.session?.activeDay}
         onSelectDay={actions.setActiveDay}
-        onAddDay={actions.addDay}
+        onOpenCreateModal={() => setShowCreateModal(true)}
         onRenameDay={actions.renameDay}
         onDeleteDay={actions.deleteDay}
         onMoveDay={actions.moveDay}
@@ -256,12 +258,7 @@ function App() {
                 Create your first training day to get started
               </p>
               <button
-                onClick={() => {
-                  const name = prompt('Day name (e.g., Push, Pull, Legs):')
-                  if (name?.trim()) {
-                    actions.addDay(name.trim())
-                  }
-                }}
+                onClick={() => setShowCreateModal(true)}
                 className="px-6 py-3 bg-[var(--text)] text-[var(--bg)] rounded-lg font-medium"
               >
                 + Add Training Day
@@ -296,6 +293,18 @@ function App() {
           message={undoMessage}
           onUndo={undo}
           onDismiss={dismiss}
+        />
+      )}
+
+      {/* Create Day Modal */}
+      {showCreateModal && (
+        <CreateDayModal
+          onClose={() => setShowCreateModal(false)}
+          onAddDay={actions.addDay}
+          onAddDayWithExercises={actions.addDayWithExercises}
+          onAddPack={actions.addPack}
+          allExercises={getAllExercises()}
+          existingDayNames={state.plan.days.map(d => d.name)}
         />
       )}
     </div>

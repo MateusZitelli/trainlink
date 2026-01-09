@@ -20,6 +20,31 @@ export function useAppState() {
     }))
   }, [])
 
+  const addDayWithExercises = useCallback((name: string, exerciseIds: string[]) => {
+    updateStateFn(prev => ({
+      ...prev,
+      plan: {
+        ...prev.plan,
+        days: [...prev.plan.days, { name, exercises: exerciseIds }],
+      },
+      session: prev.session ?? { activeDay: name },
+    }))
+  }, [])
+
+  const addPack = useCallback((days: { name: string; exerciseIds: string[] }[]) => {
+    updateStateFn(prev => ({
+      ...prev,
+      plan: {
+        ...prev.plan,
+        days: [
+          ...prev.plan.days,
+          ...days.map(d => ({ name: d.name, exercises: d.exerciseIds })),
+        ],
+      },
+      session: prev.session ?? { activeDay: days[0]?.name },
+    }))
+  }, [])
+
   const renameDay = useCallback((oldName: string, newName: string) => {
     updateStateFn(prev => ({
       ...prev,
@@ -363,6 +388,8 @@ export function useAppState() {
     state,
     actions: {
       addDay,
+      addDayWithExercises,
+      addPack,
       renameDay,
       deleteDay,
       setActiveDay,

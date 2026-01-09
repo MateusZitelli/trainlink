@@ -5,7 +5,7 @@ interface DayTabsProps {
   days: Day[]
   activeDay?: string
   onSelectDay: (name: string) => void
-  onAddDay: (name: string) => void
+  onOpenCreateModal: () => void
   onRenameDay: (oldName: string, newName: string) => void
   onDeleteDay: (name: string) => void
   onMoveDay: (fromIndex: number, toIndex: number) => void
@@ -18,7 +18,7 @@ export function DayTabs({
   days,
   activeDay,
   onSelectDay,
-  onAddDay,
+  onOpenCreateModal,
   onRenameDay,
   onDeleteDay,
   onMoveDay,
@@ -42,10 +42,7 @@ export function DayTabs({
   }, [editingDay])
 
   const handleAddDay = () => {
-    const name = prompt('Day name:')
-    if (name?.trim()) {
-      onAddDay(name.trim())
-    }
+    onOpenCreateModal()
   }
 
   const handleStartRename = (name: string) => {
