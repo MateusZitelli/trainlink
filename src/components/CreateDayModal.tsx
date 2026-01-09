@@ -390,50 +390,22 @@ export function CreateDayModal({
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {activeTab === 'days' ? (
-            <>
-              {/* Templates */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-[var(--text-muted)] uppercase tracking-wide">
-                  Suggested Days
-                </h3>
-                <div className="grid grid-cols-1 gap-3">
-                  {filteredTemplates.map(template => (
-                    <DayTemplateCard
-                      key={template.id}
-                      template={template}
-                      exercises={resolveExercises(template.exerciseNames, allExercises)}
-                      onSelect={() => handleSelectTemplate(template)}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Blank day */}
-              <div className="pt-4 border-t border-[var(--border)]">
-                <h3 className="text-sm font-medium text-[var(--text-muted)] uppercase tracking-wide mb-3">
-                  Or Start Blank
-                </h3>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={blankDayName}
-                    onChange={e => setBlankDayName(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') handleAddBlankDay()
-                    }}
-                    placeholder="Day name..."
-                    className="flex-1 px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-sm"
+            /* Templates */
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-[var(--text-muted)] uppercase tracking-wide">
+                Suggested Days
+              </h3>
+              <div className="grid grid-cols-1 gap-3">
+                {filteredTemplates.map(template => (
+                  <DayTemplateCard
+                    key={template.id}
+                    template={template}
+                    exercises={resolveExercises(template.exerciseNames, allExercises)}
+                    onSelect={() => handleSelectTemplate(template)}
                   />
-                  <button
-                    onClick={handleAddBlankDay}
-                    disabled={!blankDayName.trim()}
-                    className="px-4 py-2 bg-[var(--text)] text-[var(--bg)] rounded-lg text-sm font-medium disabled:opacity-50"
-                  >
-                    Create
-                  </button>
-                </div>
+                ))}
               </div>
-            </>
+            </div>
           ) : (
             /* Packs */
             <div className="grid grid-cols-1 gap-3">
@@ -451,6 +423,29 @@ export function CreateDayModal({
               })}
             </div>
           )}
+        </div>
+
+        {/* Sticky blank day input */}
+        <div className="border-t border-[var(--border)] bg-[var(--bg)] p-4">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={blankDayName}
+              onChange={e => setBlankDayName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleAddBlankDay()
+              }}
+              placeholder="Or create blank day..."
+              className="flex-1 px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-sm"
+            />
+            <button
+              onClick={handleAddBlankDay}
+              disabled={!blankDayName.trim()}
+              className="px-4 py-2 bg-[var(--text)] text-[var(--bg)] rounded-lg text-sm font-medium disabled:opacity-50"
+            >
+              Create
+            </button>
+          </div>
         </div>
       </div>
     </div>
