@@ -662,4 +662,72 @@ export const packs: Pack[] = [
       },
     ],
   },
+
+  // 13. Hyperstretch - Antagonist Supersets
+  {
+    id: 'hyperstretch',
+    name: 'Hyperstretch',
+    description: 'Maximum results in minimum time using antagonist supersets. Alternate between exercises with no rest.',
+    difficulty: 'intermediate',
+    frequency: '3x/week',
+    days: [
+      {
+        name: 'Upper Supersets',
+        description: 'Chest↔Back, Biceps↔Triceps. Alternate exercises with minimal rest.',
+        exerciseNames: [
+          // Superset 1: Horizontal push/pull
+          'Barbell Bench Press - Medium Grip',
+          'Bent Over Barbell Row',
+          // Superset 2: Incline push / Vertical pull
+          'Incline Dumbbell Press',
+          'Lat Pulldown - Wide Grip',
+          // Superset 3: Arms
+          'Barbell Curl',
+          'Triceps Pushdown',
+          // Superset 4: Arms variation
+          'Hammer Curls',
+          'Dumbbell One-Arm Triceps Extension',
+        ],
+        tags: ['upper', 'supersets', 'chest', 'back', 'arms'],
+      },
+      {
+        name: 'Lower Supersets',
+        description: 'Quads↔Hamstrings, Push↔Pull legs. Alternate exercises with minimal rest.',
+        exerciseNames: [
+          // Superset 1: Compound quad/ham
+          'Barbell Squat',
+          'Romanian Deadlift With Dumbbells',
+          // Superset 2: Machine quad/ham
+          'Leg Press',
+          'Lying Leg Curls',
+          // Superset 3: Isolation quad/ham
+          'Leg Extensions',
+          'Seated Leg Curl',
+          // Superset 4: Calves + Core
+          'Standing Calf Raises',
+          'Plank',
+        ],
+        tags: ['lower', 'supersets', 'quads', 'hamstrings', 'core'],
+      },
+      {
+        name: 'Full Body Supersets',
+        description: 'Push↔Pull across whole body. Alternate exercises with minimal rest.',
+        exerciseNames: [
+          // Superset 1: Vertical push/pull
+          'Standing Military Press',
+          'Pullups',
+          // Superset 2: Horizontal push/pull
+          'Dumbbell Bench Press',
+          'Seated Cable Rows',
+          // Superset 3: Dips + Upper back
+          'Dips - Chest Version',
+          'Face Pull',
+          // Superset 4: Legs antagonist
+          'Dumbbell Lunges',
+          'Lying Leg Curls',
+        ],
+        tags: ['full body', 'supersets', 'push', 'pull'],
+      },
+    ],
+  },
 ]
