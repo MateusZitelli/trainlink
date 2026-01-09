@@ -25,9 +25,11 @@ function DifficultyBadge({ difficulty }: { difficulty: DayDifficulty }) {
 
 function DayTemplateCard({
   template,
+  exercises,
   onSelect,
 }: {
   template: DayTemplate
+  exercises: Exercise[]
   onSelect: () => void
 }) {
   return (
@@ -40,8 +42,11 @@ function DayTemplateCard({
         <DifficultyBadge difficulty={template.difficulty} />
       </div>
       <p className="text-sm text-[var(--text-muted)] mb-3">{template.description}</p>
-      <div className="text-xs text-[var(--text-muted)]">
-        {template.exerciseNames.length} exercises
+      <div className="flex items-center justify-between">
+        <ExerciseImageStack exercises={exercises} max={5} />
+        <span className="text-xs text-[var(--text-muted)]">
+          {template.exerciseNames.length} exercises
+        </span>
       </div>
     </button>
   )
@@ -49,9 +54,11 @@ function DayTemplateCard({
 
 function PackCard({
   pack,
+  exercises,
   onSelect,
 }: {
   pack: Pack
+  exercises: Exercise[]
   onSelect: () => void
 }) {
   return (
@@ -64,10 +71,13 @@ function PackCard({
         <DifficultyBadge difficulty={pack.difficulty} />
       </div>
       <p className="text-sm text-[var(--text-muted)] mb-3">{pack.description}</p>
-      <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
-        <span>{pack.frequency}</span>
-        <span>•</span>
-        <span>{pack.days.length} days</span>
+      <div className="flex items-center justify-between">
+        <ExerciseImageStack exercises={exercises} max={6} />
+        <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
+          <span>{pack.frequency}</span>
+          <span>•</span>
+          <span>{pack.days.length} days</span>
+        </div>
       </div>
     </button>
   )
@@ -82,6 +92,45 @@ function resolveExerciseIds(names: string[], allExercises: Exercise[]): string[]
       return match?.exerciseId ?? null
     })
     .filter((id): id is string => id !== null)
+}
+
+function resolveExercises(names: string[], allExercises: Exercise[]): Exercise[] {
+  return names
+    .map(name => allExercises.find(ex => ex.name.toLowerCase() === name.toLowerCase()))
+    .filter((ex): ex is Exercise => ex !== undefined)
+}
+
+function ExerciseThumbnail({ exercise }: { exercise: Exercise }) {
+  const imageUrl = exercise.imageUrls[0]
+  return (
+    <div className="w-8 h-8 rounded-full bg-[var(--bg)] border border-[var(--border)] overflow-hidden flex-shrink-0">
+      {imageUrl ? (
+        <img src={imageUrl} alt={exercise.name} className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)]">?</div>
+      )}
+    </div>
+  )
+}
+
+function ExerciseImageStack({ exercises, max = 4 }: { exercises: Exercise[]; max?: number }) {
+  const shown = exercises.slice(0, max)
+  const remaining = exercises.length - max
+
+  return (
+    <div className="flex items-center">
+      <div className="flex -space-x-2">
+        {shown.map((ex, i) => (
+          <div key={ex.exerciseId} className="relative" style={{ zIndex: max - i }}>
+            <ExerciseThumbnail exercise={ex} />
+          </div>
+        ))}
+      </div>
+      {remaining > 0 && (
+        <span className="ml-2 text-xs text-[var(--text-muted)]">+{remaining}</span>
+      )}
+    </div>
+  )
 }
 
 export function CreateDayModal({
@@ -221,30 +270,31 @@ export function CreateDayModal({
                 Training Days
               </h3>
               <div className="space-y-3">
-                {selectedPack.days.map((day, i) => (
-                  <div
-                    key={i}
-                    className="p-3 bg-[var(--surface)] rounded-lg"
-                  >
-                    <h4 className="font-medium mb-1">{day.name}</h4>
-                    <p className="text-sm text-[var(--text-muted)] mb-2">{day.description}</p>
-                    <div className="flex flex-wrap gap-1">
-                      {day.exerciseNames.slice(0, 4).map((name, j) => (
-                        <span
-                          key={j}
-                          className="text-xs px-2 py-0.5 bg-[var(--bg)] rounded"
-                        >
-                          {name}
-                        </span>
-                      ))}
-                      {day.exerciseNames.length > 4 && (
-                        <span className="text-xs px-2 py-0.5 text-[var(--text-muted)]">
-                          +{day.exerciseNames.length - 4} more
-                        </span>
-                      )}
+                {selectedPack.days.map((day, i) => {
+                  const dayExercises = resolveExercises(day.exerciseNames, allExercises)
+                  return (
+                    <div
+                      key={i}
+                      className="p-3 bg-[var(--surface)] rounded-lg"
+                    >
+                      <h4 className="font-medium mb-1">{day.name}</h4>
+                      <p className="text-sm text-[var(--text-muted)] mb-3">{day.description}</p>
+                      <div className="space-y-2">
+                        {dayExercises.slice(0, 4).map(ex => (
+                          <div key={ex.exerciseId} className="flex items-center gap-2">
+                            <ExerciseThumbnail exercise={ex} />
+                            <span className="text-sm truncate">{ex.name}</span>
+                          </div>
+                        ))}
+                        {day.exerciseNames.length > 4 && (
+                          <div className="text-xs text-[var(--text-muted)] pl-10">
+                            +{day.exerciseNames.length - 4} more exercises
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
 
@@ -351,6 +401,7 @@ export function CreateDayModal({
                     <DayTemplateCard
                       key={template.id}
                       template={template}
+                      exercises={resolveExercises(template.exerciseNames, allExercises)}
                       onSelect={() => handleSelectTemplate(template)}
                     />
                   ))}
@@ -386,13 +437,18 @@ export function CreateDayModal({
           ) : (
             /* Packs */
             <div className="grid grid-cols-1 gap-3">
-              {filteredPacks.map(pack => (
-                <PackCard
-                  key={pack.id}
-                  pack={pack}
-                  onSelect={() => handleSelectPack(pack)}
-                />
-              ))}
+              {filteredPacks.map(pack => {
+                const allPackExerciseNames = [...new Set(pack.days.flatMap(d => d.exerciseNames))]
+                const packExercises = resolveExercises(allPackExerciseNames, allExercises)
+                return (
+                  <PackCard
+                    key={pack.id}
+                    pack={pack}
+                    exercises={packExercises}
+                    onSelect={() => handleSelectPack(pack)}
+                  />
+                )
+              })}
             </div>
           )}
         </div>
