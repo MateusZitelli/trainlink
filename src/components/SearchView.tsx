@@ -156,6 +156,7 @@ export function SearchView({
                   key={result.exercise.exerciseId}
                   exercise={result.exercise}
                   matches={result.matches}
+                  score={result.score}
                   inDay={getExerciseDay(result.exercise.exerciseId)}
                   onClick={() => setSelectedExercise(result.exercise)}
                   activeDay={activeDay}
@@ -206,6 +207,7 @@ export function SearchView({
 interface SearchResultCardProps {
   exercise: Exercise
   matches: SearchMatch[]
+  score: number
   inDay: string | null
   onClick: () => void
   onAddToDay?: (exerciseId: string) => void
@@ -213,27 +215,45 @@ interface SearchResultCardProps {
   activeDay?: string
 }
 
-// Get human-readable label for match keys
-function getMatchLabel(key: string): string {
-  const labels: Record<string, string> = {
-    name: 'name',
-    nameEn: 'name (EN)',
-    targetMuscles: 'muscle',
-    secondaryMuscles: 'muscle',
-    equipment: 'equipment',
-    category: 'category',
-    force: 'force',
-    mechanic: 'type',
-    level: 'level',
-    instructions: 'instructions',
-    searchTerms: 'match',
+// Check if a field was matched
+function isFieldMatched(matches: SearchMatch[], fieldKey: string): boolean {
+  return matches.some(m => m.key === fieldKey ||
+    (fieldKey === 'targetMuscles' && m.key === 'secondaryMuscles') ||
+    (fieldKey === 'secondaryMuscles' && m.key === 'targetMuscles'))
+}
+
+// Highlight text based on match indices
+function HighlightedText({ text, indices }: { text: string; indices?: readonly [number, number][] }) {
+  if (!indices || indices.length === 0) {
+    return <>{text}</>
   }
-  return labels[key] || key
+
+  const parts: React.ReactElement[] = []
+  let lastIndex = 0
+
+  for (const [start, end] of indices) {
+    if (start > lastIndex) {
+      parts.push(<span key={`pre-${start}`}>{text.slice(lastIndex, start)}</span>)
+    }
+    parts.push(
+      <mark key={`match-${start}`} className="bg-yellow-500/40 text-inherit rounded-sm px-0.5">
+        {text.slice(start, end + 1)}
+      </mark>
+    )
+    lastIndex = end + 1
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(<span key="post">{text.slice(lastIndex)}</span>)
+  }
+
+  return <>{parts}</>
 }
 
 function SearchResultCard({
   exercise,
   matches,
+  score,
   inDay,
   onClick,
   onAddToDay,
@@ -249,22 +269,40 @@ function SearchResultCard({
     static: '•',
   }
 
-  // Get unique matched fields (excluding searchTerms duplicates)
-  const matchedFields = useMemo(() => {
+  // Get match info for display
+  const matchInfo = useMemo(() => {
     const seen = new Set<string>()
-    const uniqueMatches: { key: string; value?: string }[] = []
+    const fieldKeys: string[] = []
 
     for (const match of matches) {
       // Skip searchTerms as it's redundant with other fields
       if (match.key === 'searchTerms') continue
 
-      const label = getMatchLabel(match.key)
-      if (!seen.has(label)) {
-        seen.add(label)
-        uniqueMatches.push({ key: label, value: match.value })
+      // Normalize muscle fields
+      const normalizedKey = match.key === 'secondaryMuscles' ? 'targetMuscles' : match.key
+
+      if (!seen.has(normalizedKey)) {
+        seen.add(normalizedKey)
+        fieldKeys.push(match.key)
       }
     }
-    return uniqueMatches.slice(0, 2) // Show max 2 match indicators
+
+    // Translate field names
+    const translatedFields = fieldKeys
+      .slice(0, 3)
+      .map(key => t(`search.matchField.${key}`, { defaultValue: key }))
+      .join(', ')
+
+    // Convert score (0 = perfect, 1 = no match) to percentage (100% = perfect)
+    const scorePercent = Math.round((1 - score) * 100)
+
+    return { fieldKeys, translatedFields, scorePercent }
+  }, [matches, score, t])
+
+  // Get indices for name highlight
+  const nameIndices = useMemo(() => {
+    const nameMatch = matches.find(m => m.key === 'name')
+    return nameMatch?.indices
   }, [matches])
 
   return (
@@ -297,62 +335,61 @@ function SearchResultCard({
 
       {/* Content */}
       <div className="p-2">
-        {/* Name */}
-        <div className="font-medium text-sm line-clamp-2">{exercise.name}</div>
+        {/* Name with highlight */}
+        <div className="font-medium text-sm line-clamp-2">
+          <HighlightedText text={exercise.name} indices={nameIndices} />
+        </div>
 
         {/* Match indicator */}
-        {matchedFields.length > 0 && (
-          <div className="flex items-center gap-1 mt-0.5 text-[10px] text-yellow-500">
-            <span>✓</span>
-            <span className="truncate">
-              {matchedFields.map(m => m.key).join(', ')}
-            </span>
+        {matchInfo.translatedFields && matchInfo.scorePercent > 0 && (
+          <div className="flex items-center gap-1 mt-0.5 text-[10px] text-yellow-500 truncate">
+            {t('search.matchedBy', { score: matchInfo.scorePercent, fields: matchInfo.translatedFields })}
           </div>
         )}
 
         {/* All labels in one row */}
         <div className="flex flex-wrap gap-1 mt-0.5">
           {/* Level */}
-          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium text-white ${LEVEL_COLORS[exercise.level] ?? 'bg-gray-500'}`}>
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium text-white ${LEVEL_COLORS[exercise.level] ?? 'bg-gray-500'} ${isFieldMatched(matches, 'level') ? 'ring-2 ring-yellow-500' : ''}`}>
             {t(`exerciseLevel.${exercise.level}`, { ns: 'common', defaultValue: exercise.level })}
           </span>
 
           {/* Category */}
-          <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-500/20 text-purple-400">
+          <span className={`px-1.5 py-0.5 rounded text-[10px] bg-purple-500/20 text-purple-400 ${isFieldMatched(matches, 'category') ? 'ring-2 ring-yellow-500' : ''}`}>
             {t(`exerciseCategory.${exercise.category}`, { ns: 'common', defaultValue: exercise.category })}
           </span>
 
           {/* Equipment */}
           {exercise.equipment && (
-            <span className="px-1.5 py-0.5 rounded text-[10px] bg-orange-500/20 text-orange-400">
+            <span className={`px-1.5 py-0.5 rounded text-[10px] bg-orange-500/20 text-orange-400 ${isFieldMatched(matches, 'equipment') ? 'ring-2 ring-yellow-500' : ''}`}>
               {t(`exerciseEquipment.${exercise.equipment}`, { ns: 'common', defaultValue: exercise.equipment })}
             </span>
           )}
 
           {/* Force */}
           {exercise.force && (
-            <span className="px-1.5 py-0.5 rounded text-[10px] bg-cyan-500/20 text-cyan-400">
+            <span className={`px-1.5 py-0.5 rounded text-[10px] bg-cyan-500/20 text-cyan-400 ${isFieldMatched(matches, 'force') ? 'ring-2 ring-yellow-500' : ''}`}>
               {forceIcons[exercise.force]} {t(`exerciseForce.${exercise.force}`, { ns: 'common', defaultValue: exercise.force })}
             </span>
           )}
 
           {/* Mechanic */}
           {exercise.mechanic && (
-            <span className="px-1.5 py-0.5 rounded text-[10px] bg-pink-500/20 text-pink-400">
+            <span className={`px-1.5 py-0.5 rounded text-[10px] bg-pink-500/20 text-pink-400 ${isFieldMatched(matches, 'mechanic') ? 'ring-2 ring-yellow-500' : ''}`}>
               {t(`exerciseMechanic.${exercise.mechanic}`, { ns: 'common', defaultValue: exercise.mechanic })}
             </span>
           )}
 
           {/* Target muscles */}
           {exercise.targetMuscles.map(muscle => (
-            <span key={muscle} className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400">
+            <span key={muscle} className={`px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400 ${isFieldMatched(matches, 'targetMuscles') ? 'ring-2 ring-yellow-500' : ''}`}>
               {t(`muscle.${muscle}`, { ns: 'common', defaultValue: muscle })}
             </span>
           ))}
 
           {/* Secondary muscles */}
           {exercise.secondaryMuscles.slice(0, 2).map(muscle => (
-            <span key={`sec-${muscle}`} className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg)] text-[var(--text-muted)]">
+            <span key={`sec-${muscle}`} className={`px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg)] text-[var(--text-muted)] ${isFieldMatched(matches, 'secondaryMuscles') ? 'ring-2 ring-yellow-500' : ''}`}>
               {t(`muscle.${muscle}`, { ns: 'common', defaultValue: muscle })}
             </span>
           ))}

@@ -25,7 +25,20 @@
     "initialHint": "Search or filter to find exercises",
     "openFilters": "Open filters to browse",
     "addButton": "+ Add",
-    "doNowButton": "▶ Do Now"
+    "doNowButton": "▶ Do Now",
+    "matchedBy": "Matched {{score}}% by {{fields}}",
+    "matchField": {
+      "name": "name",
+      "nameEn": "name (EN)",
+      "targetMuscles": "muscle",
+      "secondaryMuscles": "muscle",
+      "equipment": "equipment",
+      "category": "category",
+      "force": "force",
+      "mechanic": "type",
+      "level": "level",
+      "instructions": "instructions"
+    }
   },
   "filters": {
     "exercises_one": "{{count}} exercise",

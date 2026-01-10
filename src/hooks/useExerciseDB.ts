@@ -318,6 +318,7 @@ export interface SearchMatch {
 export interface SearchResult {
   exercise: Exercise
   matches: SearchMatch[]
+  score: number // 0 = perfect match, 1 = no match
 }
 
 // Lazy initialization - only load cache after i18n language is determined
@@ -516,7 +517,7 @@ export function useExerciseDB() {
       if (searchTermRef.current !== query) return
 
       // Filter exercises
-      let filtered: SearchResult[] = exercises.map(ex => ({ exercise: ex, matches: [] }))
+      let filtered: SearchResult[] = exercises.map(ex => ({ exercise: ex, matches: [], score: 1 }))
 
       // Fuzzy search across multiple fields using Fuse.js
       if (query) {
@@ -529,6 +530,7 @@ export function useExerciseDB() {
               value: m.value,
               indices: m.indices,
             })),
+            score: result.score ?? 0,
           }))
         } else {
           // Fallback to simple includes search if Fuse not initialized
@@ -543,7 +545,7 @@ export function useExerciseDB() {
               (ex.mechanic?.toLowerCase().includes(query) ?? false) ||
               ex.level.toLowerCase().includes(query)
             )
-            .map(ex => ({ exercise: ex, matches: [] }))
+            .map(ex => ({ exercise: ex, matches: [], score: 0 }))
         }
       }
 
