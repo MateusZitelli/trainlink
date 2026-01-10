@@ -213,14 +213,24 @@ if (allExercises.length > 0 && filterOptions.levels.length === 0) {
 
 // Reset database state for language change
 function resetDBState() {
-  exerciseCache = loadExerciseCache()
-  allExercises = loadDBCache() ?? []
-  dbLoading = false
-  dbLoaded = allExercises.length > 0
+  const newCache = loadExerciseCache()
+  const newExercises = loadDBCache() ?? []
+
   currentLanguage = i18n.language
-  if (allExercises.length > 0) {
+
+  // Only update if we have new cached data
+  if (newExercises.length > 0) {
+    exerciseCache = newCache
+    allExercises = newExercises
+    dbLoaded = true
     filterOptions = deriveFilterOptions(allExercises)
+  } else {
+    // No cached data for new language - keep old cache and mark for reload
+    // This prevents showing raw IDs while fetching new language
+    dbLoaded = false
   }
+
+  dbLoading = false
 }
 
 // Load the full exercise database
@@ -291,8 +301,9 @@ export function useExerciseDB() {
     const loadDB = async () => {
       // Check if we need to reload for new language
       if (currentLanguage !== language) {
-        resetDBState()
         if (!cancelled) setDbReady(false)
+        resetDBState()
+        // After reset, dbLoaded will be false if no cache, true if cached
       }
 
       if (!dbLoaded) {
