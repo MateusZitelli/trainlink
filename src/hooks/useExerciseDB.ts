@@ -11,12 +11,6 @@ const forceTranslations = commonPTBR.exerciseForce as Record<string, string>
 const mechanicTranslations = commonPTBR.exerciseMechanic as Record<string, string>
 const levelTranslations = commonPTBR.exerciseLevel as Record<string, string>
 
-// Debug: verify translations loaded
-console.log('[useExerciseDB] Muscle translations loaded:', Object.keys(muscleTranslations).length, 'entries')
-console.log('[useExerciseDB] All muscle keys:', Object.keys(muscleTranslations))
-console.log('[useExerciseDB] Example: hamstrings ->', muscleTranslations['hamstrings'])
-console.log('[useExerciseDB] Example: chest ->', muscleTranslations['chest'])
-
 const EXERCISES_URL_EN = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json'
 const EXERCISES_URL_PT_BR = `${import.meta.env.BASE_URL}data/exercises-pt-br.json`
 const IMAGE_BASE_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'
@@ -172,10 +166,6 @@ function buildSearchTerms(exercise: Exercise, nameEn?: string): string[] {
     if (translated) {
       terms.push(translated)
     }
-    // Debug: log for hamstrings
-    if (muscle === 'hamstrings') {
-      console.log('[buildSearchTerms] Found hamstrings muscle, translated:', translated)
-    }
   }
   for (const muscle of exercise.secondaryMuscles) {
     terms.push(muscle)
@@ -272,14 +262,7 @@ function loadDBCache(): Exercise[] | null {
   try {
     const stored = localStorage.getItem(getCacheKey(DB_CACHE_KEY_BASE))
     if (stored) {
-      const exercises = JSON.parse(stored) as Exercise[]
-      // Debug: check if cached data has searchTerms
-      const hamstringsEx = exercises.find(ex => ex.targetMuscles.includes('hamstrings'))
-      if (hamstringsEx) {
-        console.log('[loadDBCache] Cached hamstrings exercise:', hamstringsEx.name)
-        console.log('[loadDBCache] searchTerms from cache:', hamstringsEx.searchTerms)
-      }
-      return exercises
+      return JSON.parse(stored) as Exercise[]
     }
   } catch {
     // Ignore errors
@@ -430,13 +413,6 @@ async function loadExerciseDB(): Promise<Exercise[]> {
       return mapExercise(raw, nameEn)
     })
 
-    // Debug: log searchTerms for first hamstrings exercise
-    const hamstringsEx = allExercises.find(ex => ex.targetMuscles.includes('hamstrings'))
-    if (hamstringsEx) {
-      console.log('[loadExerciseDB] Hamstrings exercise found:', hamstringsEx.name)
-      console.log('[loadExerciseDB] searchTerms:', hamstringsEx.searchTerms)
-    }
-
     // Cache all exercises
     if (exerciseCache) {
       allExercises.forEach(ex => exerciseCache!.set(ex.exerciseId, ex))
@@ -550,16 +526,6 @@ export function useExerciseDB() {
       if (query) {
         if (fuseInstance) {
           const fuseResults = fuseInstance.search(query)
-          // Debug: log search results for Portuguese terms
-          if (query.includes('posterior')) {
-            console.log('[search] Query:', query)
-            console.log('[search] Found', fuseResults.length, 'results')
-            if (fuseResults.length > 0) {
-              console.log('[search] First result:', fuseResults[0].item.name)
-              console.log('[search] First result searchTerms:', fuseResults[0].item.searchTerms)
-              console.log('[search] First result matches:', fuseResults[0].matches)
-            }
-          }
           filtered = fuseResults.map(result => ({
             exercise: result.item,
             matches: (result.matches || []).map(m => ({
