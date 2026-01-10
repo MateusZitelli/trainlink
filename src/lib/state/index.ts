@@ -39,3 +39,11 @@ export {
   predictDropSetTrend,
   getExercisePatternFromLastSession,
 } from './predictions'
+
+export type { E1rmMetrics, WeightSuggestion } from './e1rm'
+
+export {
+  calculateE1rmMetrics,
+  calculateSmartE1rm,
+  baseE1rm,
+} from './e1rm'

@@ -4,7 +4,7 @@ import type {
   Difficulty,
   HistoryEntry,
 } from "../lib/state";
-import { getLastSet } from "../lib/state";
+import { getLastSet, calculateE1rmMetrics } from "../lib/state";
 import { useState, useEffect, useMemo } from "react";
 import { useImageRotation } from "../hooks/useImageRotation";
 import { useElapsedTimer } from "../hooks/useElapsedTimer";
@@ -15,6 +15,7 @@ import {
   SetInputs,
   DifficultyButtons,
   ExerciseImage,
+  E1rmDisplay,
 } from "./shared";
 
 interface Exercise {
@@ -93,6 +94,11 @@ export function ExerciseRow({
     return lastSet?.duration;
   }, [history, exerciseId]);
 
+  // Calculate e1RM metrics for this exercise
+  const e1rmMetrics = useMemo(() => {
+    return calculateE1rmMetrics(history, exerciseId);
+  }, [history, exerciseId]);
+
   // Reset form when exercise changes
   useEffect(() => {
     setSetStartedAt(null);
@@ -165,7 +171,12 @@ export function ExerciseRow({
               <div className="text-xs text-[var(--text-muted)]">New</div>
             )}
             <div className="text-xs text-[var(--text-muted)]">{restTime}s rest</div>
-            <SetsDisplay sets={todaySets} />
+            <div className="flex items-center gap-2">
+              <SetsDisplay sets={todaySets} />
+              {e1rmMetrics.current && (
+                <span className="text-xs text-blue-400">{e1rmMetrics.current}kg</span>
+              )}
+            </div>
           </div>
 
           {isActive ? (
@@ -321,6 +332,24 @@ export function ExerciseRow({
               </li>
             ))}
           </ol>
+        </details>
+      )}
+
+      {e1rmMetrics.current && (
+        <details className="bg-[var(--bg)] rounded-lg">
+          <summary className="px-3 py-2 text-sm cursor-pointer hover:text-[var(--text)] flex items-center justify-between">
+            <span className="text-[var(--text-muted)]">Strength metrics</span>
+            <span className="font-medium">{e1rmMetrics.current}kg e1RM</span>
+          </summary>
+          <div className="px-3 pb-3">
+            <E1rmDisplay
+              metrics={e1rmMetrics}
+              onSelectWeight={(selectedKg, selectedReps) => {
+                setKg(selectedKg.toString());
+                setReps(selectedReps.toString());
+              }}
+            />
+          </div>
         </details>
       )}
 
