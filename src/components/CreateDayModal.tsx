@@ -77,9 +77,10 @@ function PackCard({
 }) {
   const { t } = useTranslation()
 
-  // Generate translation keys from pack ID
-  const nameKey = pack.id.replace(/-/g, '_') + '_name'
-  const descKey = pack.id.replace(/-/g, '_') + '_desc'
+  // Generate translation keys from pack ID (with _pack suffix to avoid conflicts with day templates)
+  const packId = pack.id.replace(/-/g, '_')
+  const nameKey = packId === 'fullbody_beginner' ? packId + '_pack_name' : packId + '_name'
+  const descKey = packId === 'fullbody_beginner' ? packId + '_pack_desc' : packId + '_desc'
 
   return (
     <button
@@ -250,8 +251,9 @@ export function CreateDayModal({
 
   // Pack detail view
   if (selectedPack) {
-    const packNameKey = selectedPack.id.replace(/-/g, '_') + '_name'
-    const packDescKey = selectedPack.id.replace(/-/g, '_') + '_desc'
+    const packId = selectedPack.id.replace(/-/g, '_')
+    const packNameKey = packId === 'fullbody_beginner' ? packId + '_pack_name' : packId + '_name'
+    const packDescKey = packId === 'fullbody_beginner' ? packId + '_pack_desc' : packId + '_desc'
 
     return (
       <div
@@ -303,9 +305,11 @@ export function CreateDayModal({
               <div className="space-y-3">
                 {selectedPack.days.map((day, i) => {
                   const dayExercises = resolveExercises(day.exerciseNames, allExercises)
-                  // Generate translation keys for pack day
-                  const dayNameKey = selectedPack.id.replace(/-/g, '_') + '_day' + i + '_name'
-                  const dayDescKey = selectedPack.id.replace(/-/g, '_') + '_day' + i + '_desc'
+                  // Generate translation keys for pack day (with _pack suffix for fullbody_beginner to avoid conflicts)
+                  const packId = selectedPack.id.replace(/-/g, '_')
+                  const prefix = packId === 'fullbody_beginner' ? packId + '_pack' : packId
+                  const dayNameKey = prefix + '_day' + i + '_name'
+                  const dayDescKey = prefix + '_day' + i + '_desc'
 
                   return (
                     <div
