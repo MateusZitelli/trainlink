@@ -255,12 +255,7 @@ export function ExerciseRow({
 
   // Expanded view - using ProgressiveSetInput for both active and inactive states
   return (
-    <motion.div
-      className="bg-[var(--surface)] rounded-lg p-4 space-y-4"
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={springs.snappy}
-    >
+    <div className="bg-[var(--surface)] rounded-lg p-4 space-y-4">
       <AnimatePresence>
         {showFullImage && imageUrls.length > 0 && (
           <motion.div
@@ -283,13 +278,7 @@ export function ExerciseRow({
         )}
       </AnimatePresence>
 
-      <motion.div
-        className="flex gap-4 cursor-pointer"
-        onClick={onClick}
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ ...springs.snappy, delay: 0.05 }}
-      >
+      <div className="flex gap-4 cursor-pointer" onClick={onClick}>
         <ExerciseImage
           imageUrls={imageUrls}
           imageIndex={imageIndex}
@@ -333,15 +322,10 @@ export function ExerciseRow({
             </motion.button>
           )}
         </div>
-      </motion.div>
+      </div>
 
       {exercise?.instructions && exercise.instructions.length > 0 && (
-        <motion.details
-          className="bg-[var(--bg)] rounded-lg group"
-          initial={{ opacity: 0, y: 5 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ ...springs.snappy, delay: 0.1 }}
-        >
+        <details className="bg-[var(--bg)] rounded-lg group">
           <summary className="px-3 py-2 text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text)] flex items-center gap-2">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -369,16 +353,11 @@ export function ExerciseRow({
               </li>
             ))}
           </ol>
-        </motion.details>
+        </details>
       )}
 
       {e1rmMetrics.current && (
-        <motion.details
-          className="bg-[var(--bg)] rounded-lg group"
-          initial={{ opacity: 0, y: 5 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ ...springs.snappy, delay: 0.15 }}
-        >
+        <details className="bg-[var(--bg)] rounded-lg group">
           <summary className="px-3 py-2 text-sm cursor-pointer hover:text-[var(--text)] flex items-center justify-between list-none">
             <span className="flex items-center gap-2 text-[var(--text-muted)]">
               <svg
@@ -408,18 +387,13 @@ export function ExerciseRow({
               }}
             />
           </div>
-        </motion.details>
+        </details>
       )}
 
       {prediction && (isKgPredicted || isRepsPredicted) && (
-        <motion.div
-          className="px-3 py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm"
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ ...springs.snappy, delay: 0.2 }}
-        >
+        <div className="px-3 py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm">
           <PredictionDisplay prediction={prediction} />
-        </motion.div>
+        </div>
       )}
 
       <ProgressiveSetInput
@@ -437,6 +411,6 @@ export function ExerciseRow({
         onStart={handleStart}
         onFinish={handleFinish}
       />
-    </motion.div>
+    </div>
   );
 }
