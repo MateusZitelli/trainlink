@@ -205,7 +205,6 @@ let dbLoading = false
 let dbLoaded = allExercises.length > 0
 let currentLanguage = i18n.language
 const dbLoadCallbacks: (() => void)[] = []
-const languageChangeCallbacks: (() => void)[] = []
 
 // Initialize filter options from cached exercises if available
 if (allExercises.length > 0 && filterOptions.levels.length === 0) {
@@ -222,20 +221,6 @@ function resetDBState() {
   if (allExercises.length > 0) {
     filterOptions = deriveFilterOptions(allExercises)
   }
-}
-
-// Singleton language change handler - only set up once at module level
-let languageListenerSetup = false
-function setupLanguageListener() {
-  if (languageListenerSetup) return
-  languageListenerSetup = true
-
-  i18n.on('languageChanged', async () => {
-    resetDBState()
-    await loadExerciseDB()
-    // Notify all hook instances to update
-    languageChangeCallbacks.forEach(cb => cb())
-  })
 }
 
 // Load the full exercise database
@@ -285,22 +270,39 @@ export function useExerciseDB() {
   const [error, setError] = useState<string | null>(null)
   const [cacheVersion, setCacheVersion] = useState(0)
   const [dbReady, setDbReady] = useState(dbLoaded)
+  const [language, setLanguage] = useState(i18n.language)
   const searchTermRef = useRef('')
 
-  // Load DB on mount and handle language changes
+  // Listen for language changes
   useEffect(() => {
-    // Set up singleton language listener
-    setupLanguageListener()
+    const handleLanguageChange = (lng: string) => {
+      setLanguage(lng)
+    }
+    i18n.on('languageChanged', handleLanguageChange)
+    return () => {
+      i18n.off('languageChanged', handleLanguageChange)
+    }
+  }, [])
+
+  // Load DB on mount and when language changes
+  useEffect(() => {
+    let cancelled = false
 
     const loadDB = async () => {
-      // Check if language changed since module init
-      if (currentLanguage !== i18n.language) {
+      // Check if we need to reload for new language
+      if (currentLanguage !== language) {
         resetDBState()
-        setDbReady(false)
+        if (!cancelled) setDbReady(false)
       }
 
       if (!dbLoaded) {
         await loadExerciseDB()
+        if (!cancelled) {
+          setDbReady(true)
+          setCacheVersion(v => v + 1)
+        }
+      } else if (!cancelled) {
+        // Already loaded, just trigger re-render
         setDbReady(true)
         setCacheVersion(v => v + 1)
       }
@@ -308,19 +310,10 @@ export function useExerciseDB() {
 
     loadDB()
 
-    // Register callback for language changes
-    const handleLanguageChange = () => {
-      setDbReady(true)
-      setResults([])
-      setCacheVersion(v => v + 1)
-    }
-
-    languageChangeCallbacks.push(handleLanguageChange)
     return () => {
-      const idx = languageChangeCallbacks.indexOf(handleLanguageChange)
-      if (idx >= 0) languageChangeCallbacks.splice(idx, 1)
+      cancelled = true
     }
-  }, [])
+  }, [language])
 
   const search = useCallback(async (filters: SearchFilters) => {
     const query = filters.query?.toLowerCase().trim() ?? ''
