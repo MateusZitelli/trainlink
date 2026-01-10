@@ -39,10 +39,10 @@ const DIFFICULTY_COLORS: Record<PredictedDifficulty, string> = {
   hard: 'bg-red-500',
 }
 
-const DIFFICULTY_BG_TINTS: Record<string, string> = {
-  easy: 'bg-green-500/20',
-  normal: 'bg-yellow-500/20',
-  hard: 'bg-red-500/20',
+const DIFFICULTY_DOT_COLORS: Record<string, string> = {
+  easy: 'bg-green-500',
+  normal: 'bg-yellow-500',
+  hard: 'bg-red-500',
 }
 
 const DIFFICULTY_LABELS: Record<PredictedDifficulty, string> = {
@@ -205,7 +205,7 @@ export function ProgressiveSetInput({
               {lastSessionSets.map((set, i) => {
                 const isCurrentSetNumber = i === setNumber - 1
                 const matchesCurrentValues = set.kg === kgNum && set.reps === repsNum
-                const bgTint = set.difficulty ? DIFFICULTY_BG_TINTS[set.difficulty] : 'bg-[var(--surface)]'
+                const dotColor = set.difficulty ? DIFFICULTY_DOT_COLORS[set.difficulty] : null
 
                 return (
                   <button
@@ -215,7 +215,7 @@ export function ProgressiveSetInput({
                       onKgChange(set.kg.toString())
                       onRepsChange(set.reps.toString())
                     }}
-                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${bgTint} ${
+                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors bg-[var(--surface)] flex items-center gap-1.5 ${
                       matchesCurrentValues
                         ? 'ring-2 ring-blue-500'
                         : isCurrentSetNumber
@@ -223,9 +223,8 @@ export function ProgressiveSetInput({
                           : 'hover:ring-1 hover:ring-[var(--text-muted)]'
                     }`}
                   >
-                    <span className={matchesCurrentValues ? 'text-blue-400' : ''}>{set.kg}</span>
-                    <span className="opacity-60">×</span>
-                    <span className={matchesCurrentValues ? 'text-blue-400' : ''}>{set.reps}</span>
+                    {dotColor && <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />}
+                    <span className={matchesCurrentValues ? 'text-blue-400' : ''}>{set.kg}×{set.reps}</span>
                   </button>
                 )
               })}
