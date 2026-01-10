@@ -370,16 +370,6 @@ export function CreateDayModal({
           {/* Tabs */}
           <div className="flex gap-1 bg-[var(--surface)] p-1 rounded-lg">
             <button
-              onClick={() => setActiveTab('days')}
-              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-                activeTab === 'days'
-                  ? 'bg-[var(--bg)] text-[var(--text)]'
-                  : 'text-[var(--text-muted)]'
-              }`}
-            >
-              {t('createDay.singleDay')}
-            </button>
-            <button
               onClick={() => setActiveTab('packs')}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
                 activeTab === 'packs'
@@ -388,6 +378,16 @@ export function CreateDayModal({
               }`}
             >
               {t('createDay.packs', { count: packs.length })}
+            </button>
+            <button
+              onClick={() => setActiveTab('days')}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === 'days'
+                  ? 'bg-[var(--bg)] text-[var(--text)]'
+                  : 'text-[var(--text-muted)]'
+              }`}
+            >
+              {t('createDay.singleDay')}
             </button>
           </div>
         </div>
