@@ -244,50 +244,22 @@ function matchesFieldValue(
   return false
 }
 
-// Check if a field was matched (including matches via searchTerms)
-function isFieldMatched(matches: SearchMatch[], fieldKey: string, exercise: Exercise): boolean {
+// Check if a specific value was matched (for individual tag highlighting)
+function isValueMatched(
+  matches: SearchMatch[],
+  fieldKey: string,
+  value: string,
+  translations: Record<string, string>
+): boolean {
   return matches.some(m => {
-    // Direct field match
-    if (m.key === fieldKey) return true
+    // Direct field match - check if this specific value was matched
+    if (m.key === fieldKey && m.value) {
+      return matchesFieldValue(m.value, value, translations)
+    }
 
-    // Cross-match muscles
-    if (fieldKey === 'targetMuscles' && m.key === 'secondaryMuscles') return true
-    if (fieldKey === 'secondaryMuscles' && m.key === 'targetMuscles') return true
-
-    // Check if searchTerms match relates to this field
+    // Check searchTerms match
     if (m.key === 'searchTerms' && m.value) {
-      // Check muscles
-      if (fieldKey === 'targetMuscles' || fieldKey === 'secondaryMuscles') {
-        const allMuscles = [...exercise.targetMuscles, ...exercise.secondaryMuscles]
-        if (allMuscles.some(muscle => matchesFieldValue(m.value!, muscle, muscleTranslations))) {
-          return true
-        }
-      }
-
-      // Check equipment
-      if (fieldKey === 'equipment' && exercise.equipment) {
-        if (matchesFieldValue(m.value, exercise.equipment, equipmentTranslations)) return true
-      }
-
-      // Check category
-      if (fieldKey === 'category') {
-        if (matchesFieldValue(m.value, exercise.category, categoryTranslations)) return true
-      }
-
-      // Check force
-      if (fieldKey === 'force' && exercise.force) {
-        if (matchesFieldValue(m.value, exercise.force, forceTranslations)) return true
-      }
-
-      // Check mechanic
-      if (fieldKey === 'mechanic' && exercise.mechanic) {
-        if (matchesFieldValue(m.value, exercise.mechanic, mechanicTranslations)) return true
-      }
-
-      // Check level
-      if (fieldKey === 'level') {
-        if (matchesFieldValue(m.value, exercise.level, levelTranslations)) return true
-      }
+      return matchesFieldValue(m.value, value, translations)
     }
 
     return false
@@ -422,46 +394,46 @@ function SearchResultCard({
         {/* All labels in one row */}
         <div className="flex flex-wrap gap-1 mt-0.5">
           {/* Level */}
-          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium text-white ${LEVEL_COLORS[exercise.level] ?? 'bg-gray-500'} ${isFieldMatched(matches, 'level', exercise) ? 'ring-2 ring-yellow-500' : ''}`}>
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium text-white ${LEVEL_COLORS[exercise.level] ?? 'bg-gray-500'} ${isValueMatched(matches, 'level', exercise.level, levelTranslations) ? 'ring-2 ring-yellow-500' : ''}`}>
             {t(`exerciseLevel.${exercise.level}`, { ns: 'common', defaultValue: exercise.level })}
           </span>
 
           {/* Category */}
-          <span className={`px-1.5 py-0.5 rounded text-[10px] bg-purple-500/20 text-purple-400 ${isFieldMatched(matches, 'category', exercise) ? 'ring-2 ring-yellow-500' : ''}`}>
+          <span className={`px-1.5 py-0.5 rounded text-[10px] bg-purple-500/20 text-purple-400 ${isValueMatched(matches, 'category', exercise.category, categoryTranslations) ? 'ring-2 ring-yellow-500' : ''}`}>
             {t(`exerciseCategory.${exercise.category}`, { ns: 'common', defaultValue: exercise.category })}
           </span>
 
           {/* Equipment */}
           {exercise.equipment && (
-            <span className={`px-1.5 py-0.5 rounded text-[10px] bg-orange-500/20 text-orange-400 ${isFieldMatched(matches, 'equipment', exercise) ? 'ring-2 ring-yellow-500' : ''}`}>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] bg-orange-500/20 text-orange-400 ${isValueMatched(matches, 'equipment', exercise.equipment, equipmentTranslations) ? 'ring-2 ring-yellow-500' : ''}`}>
               {t(`exerciseEquipment.${exercise.equipment}`, { ns: 'common', defaultValue: exercise.equipment })}
             </span>
           )}
 
           {/* Force */}
           {exercise.force && (
-            <span className={`px-1.5 py-0.5 rounded text-[10px] bg-cyan-500/20 text-cyan-400 ${isFieldMatched(matches, 'force', exercise) ? 'ring-2 ring-yellow-500' : ''}`}>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] bg-cyan-500/20 text-cyan-400 ${isValueMatched(matches, 'force', exercise.force, forceTranslations) ? 'ring-2 ring-yellow-500' : ''}`}>
               {forceIcons[exercise.force]} {t(`exerciseForce.${exercise.force}`, { ns: 'common', defaultValue: exercise.force })}
             </span>
           )}
 
           {/* Mechanic */}
           {exercise.mechanic && (
-            <span className={`px-1.5 py-0.5 rounded text-[10px] bg-pink-500/20 text-pink-400 ${isFieldMatched(matches, 'mechanic', exercise) ? 'ring-2 ring-yellow-500' : ''}`}>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] bg-pink-500/20 text-pink-400 ${isValueMatched(matches, 'mechanic', exercise.mechanic, mechanicTranslations) ? 'ring-2 ring-yellow-500' : ''}`}>
               {t(`exerciseMechanic.${exercise.mechanic}`, { ns: 'common', defaultValue: exercise.mechanic })}
             </span>
           )}
 
           {/* Target muscles */}
           {exercise.targetMuscles.map(muscle => (
-            <span key={muscle} className={`px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400 ${isFieldMatched(matches, 'targetMuscles', exercise) ? 'ring-2 ring-yellow-500' : ''}`}>
+            <span key={muscle} className={`px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400 ${isValueMatched(matches, 'targetMuscles', muscle, muscleTranslations) ? 'ring-2 ring-yellow-500' : ''}`}>
               {t(`muscle.${muscle}`, { ns: 'common', defaultValue: muscle })}
             </span>
           ))}
 
           {/* Secondary muscles */}
           {exercise.secondaryMuscles.slice(0, 2).map(muscle => (
-            <span key={`sec-${muscle}`} className={`px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg)] text-[var(--text-muted)] ${isFieldMatched(matches, 'secondaryMuscles', exercise) ? 'ring-2 ring-yellow-500' : ''}`}>
+            <span key={`sec-${muscle}`} className={`px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg)] text-[var(--text-muted)] ${isValueMatched(matches, 'secondaryMuscles', muscle, muscleTranslations) ? 'ring-2 ring-yellow-500' : ''}`}>
               {t(`muscle.${muscle}`, { ns: 'common', defaultValue: muscle })}
             </span>
           ))}
