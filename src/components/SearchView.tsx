@@ -265,46 +265,46 @@ function SearchResultCard({
         <div className="flex flex-wrap gap-1 mt-0.5">
           {/* Level */}
           <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium text-white ${LEVEL_COLORS[exercise.level] ?? 'bg-gray-500'}`}>
-            {exercise.level}
+            {t(`exerciseLevel.${exercise.level}`, { ns: 'common', defaultValue: exercise.level })}
           </span>
 
           {/* Category */}
           <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-500/20 text-purple-400">
-            {exercise.category}
+            {t(`exerciseCategory.${exercise.category}`, { ns: 'common', defaultValue: exercise.category })}
           </span>
 
           {/* Equipment */}
           {exercise.equipment && (
             <span className="px-1.5 py-0.5 rounded text-[10px] bg-orange-500/20 text-orange-400">
-              {exercise.equipment}
+              {t(`exerciseEquipment.${exercise.equipment}`, { ns: 'common', defaultValue: exercise.equipment })}
             </span>
           )}
 
           {/* Force */}
           {exercise.force && (
             <span className="px-1.5 py-0.5 rounded text-[10px] bg-cyan-500/20 text-cyan-400">
-              {forceIcons[exercise.force]} {exercise.force}
+              {forceIcons[exercise.force]} {t(`exerciseForce.${exercise.force}`, { ns: 'common', defaultValue: exercise.force })}
             </span>
           )}
 
           {/* Mechanic */}
           {exercise.mechanic && (
             <span className="px-1.5 py-0.5 rounded text-[10px] bg-pink-500/20 text-pink-400">
-              {exercise.mechanic}
+              {t(`exerciseMechanic.${exercise.mechanic}`, { ns: 'common', defaultValue: exercise.mechanic })}
             </span>
           )}
 
           {/* Target muscles */}
           {exercise.targetMuscles.map(muscle => (
             <span key={muscle} className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400">
-              {muscle}
+              {t(`muscle.${muscle}`, { ns: 'common', defaultValue: muscle })}
             </span>
           ))}
 
           {/* Secondary muscles */}
           {exercise.secondaryMuscles.slice(0, 2).map(muscle => (
             <span key={`sec-${muscle}`} className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg)] text-[var(--text-muted)]">
-              {muscle}
+              {t(`muscle.${muscle}`, { ns: 'common', defaultValue: muscle })}
             </span>
           ))}
           {exercise.secondaryMuscles.length > 2 && (
