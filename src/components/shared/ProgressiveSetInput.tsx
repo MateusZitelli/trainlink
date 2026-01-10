@@ -39,12 +39,6 @@ const DIFFICULTY_COLORS: Record<PredictedDifficulty, string> = {
   hard: 'bg-red-500',
 }
 
-const DIFFICULTY_TEXT_COLORS: Record<string, string> = {
-  easy: 'text-green-400',
-  normal: 'text-yellow-400',
-  hard: 'text-red-400',
-}
-
 const DIFFICULTY_BG_TINTS: Record<string, string> = {
   easy: 'bg-green-500/20',
   normal: 'bg-yellow-500/20',
