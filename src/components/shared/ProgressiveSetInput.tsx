@@ -317,15 +317,12 @@ export function ProgressiveSetInput({
               >
                 −15
               </button>
-              <div className="relative">
-                <input
-                  type="number"
-                  value={restTime}
-                  onChange={(e) => onRestTimeChange(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-24 text-center text-3xl font-bold bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 rounded"
-                />
-                <span className="absolute right-0 top-1/2 -translate-y-1/2 text-sm text-[var(--text-muted)] pointer-events-none">s</span>
-              </div>
+              <input
+                type="number"
+                value={restTime}
+                onChange={(e) => onRestTimeChange(Math.max(0, parseInt(e.target.value) || 0))}
+                className="w-24 text-center text-3xl font-bold bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 rounded"
+              />
               <button
                 type="button"
                 onClick={() => onRestTimeChange(restTime + 15)}
@@ -335,6 +332,7 @@ export function ProgressiveSetInput({
                 +15
               </button>
             </div>
+            <div className="text-xs text-[var(--text-muted)] text-center mt-1">s</div>
           </div>
         </div>
 
