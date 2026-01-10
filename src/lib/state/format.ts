@@ -17,6 +17,12 @@ export function formatDetailedPrediction(prediction: NextExercisePrediction): st
       const pattern = reason.pattern.map(capitalize).join(' → ')
       return `${pattern} cycle: ${values}`
     }
+    case 'cycle-trend': {
+      const pattern = reason.pattern.map(capitalize).join(' → ')
+      const prevKg = kg - reason.delta.kg
+      const prevReps = reps - reason.delta.reps
+      return `${pattern} cycle: ${prevKg}kg × ${prevReps} → ${kg}kg × ${reps}`
+    }
     case 'trend': {
       if (reason.delta.kg === 0 && reason.delta.reps === 0) {
         return `Continue: ${values}`

@@ -50,6 +50,7 @@ export const INITIAL_STATE: AppState = {
 // Prediction reason types for UI display
 export type PredictionReason =
   | { type: 'cycle'; pattern: string[] }
+  | { type: 'cycle-trend'; pattern: string[]; delta: { kg: number; reps: number } }
   | { type: 'trend'; delta: { kg: number; reps: number } }
   | { type: 'history-dropset'; matchedSession: number; pattern: { kg: number; reps: number; difficulty?: Difficulty }[]; currentIndex: number }
   | { type: 'history-dropset-start'; pattern: { kg: number; reps: number; difficulty?: Difficulty }[] }

@@ -17,7 +17,7 @@ import {
   buildExerciseOrder,
 } from './helpers'
 
-// Strategy 1: Detect cycle pattern (A→B→A→B)
+// Strategy 1: Detect cycle pattern (A→B→A→B) with optional drop-set trend
 const tryCyclePattern: PredictionStrategy = (ctx) => {
   const { exerciseOrder, currentSets, history, restTimes } = ctx
   if (exerciseOrder.length < 3) return null
@@ -64,13 +64,39 @@ const tryCyclePattern: PredictionStrategy = (ctx) => {
   const positionInCycle = cycle.length % cycle.pattern.length
   const nextExId = cycle.pattern[positionInCycle]
 
-  const lastSetForEx = [...currentSets].reverse().find(s => s.exId === nextExId)
-  const historicalSet = lastSetForEx ?? getLastSet(history, nextExId)
+  // Get all sets for the next exercise in the current session
+  const setsForNextEx = currentSets.filter(s => s.exId === nextExId)
+
+  // If we have 2+ sets, detect trend and extrapolate
+  if (setsForNextEx.length >= 2) {
+    const prev = setsForNextEx[setsForNextEx.length - 2]
+    const last = setsForNextEx[setsForNextEx.length - 1]
+
+    const kgDelta = last.kg - prev.kg
+    const repsDelta = last.reps - prev.reps
+
+    // Only use trend if there's an actual change
+    if (kgDelta !== 0 || repsDelta !== 0) {
+      const predictedKg = Math.max(0, last.kg + kgDelta)
+      const predictedReps = Math.max(1, last.reps + repsDelta)
+
+      return {
+        exId: nextExId,
+        kg: predictedKg,
+        reps: predictedReps,
+        rest: getDefaultRest(history, nextExId, restTimes),
+        reason: { type: 'cycle-trend', pattern: cycle.pattern, delta: { kg: kgDelta, reps: repsDelta } },
+      }
+    }
+  }
+
+  // Fall back to last set values
+  const lastSetForEx = setsForNextEx[setsForNextEx.length - 1] ?? getLastSet(history, nextExId)
 
   return {
     exId: nextExId,
-    kg: historicalSet?.kg ?? 0,
-    reps: historicalSet?.reps ?? 0,
+    kg: lastSetForEx?.kg ?? 0,
+    reps: lastSetForEx?.reps ?? 0,
     rest: getDefaultRest(history, nextExId, restTimes),
     reason: { type: 'cycle', pattern: cycle.pattern },
   }

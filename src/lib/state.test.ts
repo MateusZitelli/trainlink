@@ -396,6 +396,74 @@ describe('predictNextExercise with historical drop-set trends across sessions', 
     expect(prediction?.kg).toBe(120)
     expect(prediction?.reps).toBe(4)
   })
+
+  it('detects drop-set trend within a cycle pattern', () => {
+    // Superset with drop-sets: Bench 100kg → Row → Bench 80kg → Row → ?
+    // Should detect cycle [bench, row] AND extrapolate the bench drop-set trend
+    const history: HistoryEntry[] = [
+      { type: 'set', exId: 'bench', ts: 1000, kg: 100, reps: 5 },
+      { type: 'set', exId: 'row', ts: 2000, kg: 60, reps: 10 },
+      { type: 'set', exId: 'bench', ts: 3000, kg: 80, reps: 8 },
+      { type: 'set', exId: 'row', ts: 4000, kg: 60, reps: 10 },
+    ]
+    const prediction = predictNextExercise(history, {})
+
+    // Should predict bench (next in cycle)
+    expect(prediction?.exId).toBe('bench')
+    // Should extrapolate the trend: 100→80 (-20kg), 5→8 (+3 reps)
+    expect(prediction?.kg).toBe(60) // 80 - 20 = 60
+    expect(prediction?.reps).toBe(11) // 8 + 3 = 11
+    expect(prediction?.reason.type).toBe('cycle-trend')
+  })
+
+  it('uses cycle without trend when no weight/rep change in cycle', () => {
+    // Superset: Bench 100kg → Row → Bench 100kg → Row → ?
+    // No trend (same weight/reps), should use cycle reason
+    const history: HistoryEntry[] = [
+      { type: 'set', exId: 'bench', ts: 1000, kg: 100, reps: 5 },
+      { type: 'set', exId: 'row', ts: 2000, kg: 60, reps: 10 },
+      { type: 'set', exId: 'bench', ts: 3000, kg: 100, reps: 5 },
+      { type: 'set', exId: 'row', ts: 4000, kg: 60, reps: 10 },
+    ]
+    const prediction = predictNextExercise(history, {})
+
+    expect(prediction?.exId).toBe('bench')
+    expect(prediction?.kg).toBe(100)
+    expect(prediction?.reps).toBe(5)
+    expect(prediction?.reason.type).toBe('cycle') // Not cycle-trend
+  })
+
+  it('detects only kg trend in cycle', () => {
+    // Drop weight but keep reps same
+    const history: HistoryEntry[] = [
+      { type: 'set', exId: 'bench', ts: 1000, kg: 100, reps: 8 },
+      { type: 'set', exId: 'row', ts: 2000, kg: 60, reps: 10 },
+      { type: 'set', exId: 'bench', ts: 3000, kg: 80, reps: 8 },
+      { type: 'set', exId: 'row', ts: 4000, kg: 60, reps: 10 },
+    ]
+    const prediction = predictNextExercise(history, {})
+
+    expect(prediction?.exId).toBe('bench')
+    expect(prediction?.kg).toBe(60) // 80 - 20 = 60
+    expect(prediction?.reps).toBe(8) // 8 + 0 = 8
+    expect(prediction?.reason.type).toBe('cycle-trend')
+  })
+
+  it('prevents negative kg in cycle-trend prediction', () => {
+    // Trend would predict negative kg
+    const history: HistoryEntry[] = [
+      { type: 'set', exId: 'bench', ts: 1000, kg: 40, reps: 5 },
+      { type: 'set', exId: 'row', ts: 2000, kg: 60, reps: 10 },
+      { type: 'set', exId: 'bench', ts: 3000, kg: 10, reps: 8 },
+      { type: 'set', exId: 'row', ts: 4000, kg: 60, reps: 10 },
+    ]
+    const prediction = predictNextExercise(history, {})
+
+    expect(prediction?.exId).toBe('bench')
+    // Trend: 40→10 (-30kg), but 10-30 = -20, should clamp to 0
+    expect(prediction?.kg).toBe(0)
+    expect(prediction?.reps).toBe(11) // 5→8 (+3), 8+3 = 11
+  })
 })
 
 describe('predictExerciseValues (unified prediction)', () => {
@@ -502,6 +570,19 @@ describe('predictExerciseValues (unified prediction)', () => {
       }
       const result = formatDetailedPrediction(prediction)
       expect(result).toBe('Bench → Row cycle: 60kg × 10')
+    })
+
+    it('formats cycle-trend prediction with pattern and trend', () => {
+      const prediction: NextExercisePrediction = {
+        exId: 'bench',
+        kg: 60,
+        reps: 11,
+        rest: 90,
+        reason: { type: 'cycle-trend', pattern: ['bench', 'row'], delta: { kg: -20, reps: 3 } },
+      }
+      const result = formatDetailedPrediction(prediction)
+      // prevKg = 60 - (-20) = 80, prevReps = 11 - 3 = 8
+      expect(result).toBe('Bench → Row cycle: 80kg × 8 → 60kg × 11')
     })
 
     it('formats trend prediction showing previous and next values', () => {
