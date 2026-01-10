@@ -39,6 +39,12 @@ const DIFFICULTY_COLORS: Record<PredictedDifficulty, string> = {
   hard: 'bg-red-500',
 }
 
+const DIFFICULTY_TEXT_COLORS: Record<string, string> = {
+  easy: 'text-green-400',
+  normal: 'text-yellow-400',
+  hard: 'text-red-400',
+}
+
 const DIFFICULTY_LABELS: Record<PredictedDifficulty, string> = {
   warmup: 'Warmup',
   easy: 'Easy',
@@ -206,16 +212,15 @@ export function ProgressiveSetInput({
                   }}
                   className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
                     i === setNumber - 1
-                      ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50'
+                      ? 'bg-blue-500/20 ring-1 ring-blue-500/50'
                       : 'bg-[var(--surface)] hover:bg-[var(--surface-hover)]'
                   }`}
                 >
-                  {set.kg}×{set.reps}
-                  {set.difficulty && (
-                    <span className="ml-1 opacity-60">
-                      {set.difficulty[0].toUpperCase()}
-                    </span>
-                  )}
+                  <span className={i === setNumber - 1 ? 'text-blue-400' : ''}>{set.kg}</span>
+                  <span className="opacity-60">×</span>
+                  <span className={set.difficulty ? DIFFICULTY_TEXT_COLORS[set.difficulty] || '' : ''}>
+                    {set.reps}
+                  </span>
                 </button>
               ))}
             </div>
