@@ -22,7 +22,11 @@ export function QuickExercise({
   onClose,
   onClearRest,
 }: QuickExerciseProps) {
-  const { getExercise } = useExerciseDB()
+  const { getExercise, dbReady } = useExerciseDB()
+
+  // Force re-render when dbReady changes (e.g., after language switch)
+  void dbReady
+
   const exercise = getExercise(exerciseId)
   const prediction = predictExerciseValues(history, restTimes, exerciseId)
   const todaySets = getSetsForExerciseToday(history, exerciseId)

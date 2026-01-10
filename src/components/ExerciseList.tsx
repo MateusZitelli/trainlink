@@ -42,7 +42,10 @@ export function ExerciseList({
   onClearRest,
 }: ExerciseListProps) {
   const { t } = useTranslation()
-  const { getExercise } = useExerciseDB()
+  const { getExercise, dbReady } = useExerciseDB()
+
+  // Force re-render when dbReady changes (e.g., after language switch)
+  void dbReady
 
   // Get current session sets (for unplanned exercises list)
   const currentSessionSets = useMemo(() => getCurrentSessionSets(history), [history])

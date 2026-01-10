@@ -135,7 +135,10 @@ function formatSessionFullDate(ts: number): string {
 }
 
 export function ShareSessionView({ sessionData, onBack }: ShareSessionViewProps) {
-  const { getExercise, fetchExercises } = useExerciseDB()
+  const { getExercise, fetchExercises, dbReady } = useExerciseDB()
+
+  // Force re-render when dbReady changes (e.g., after language switch)
+  void dbReady
 
   // Get unique exercise IDs
   const exerciseIds = useMemo(() => {
