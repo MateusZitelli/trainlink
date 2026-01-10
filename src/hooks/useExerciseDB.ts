@@ -303,8 +303,21 @@ const fuseOptions: IFuseOptions<Exercise> = {
   ],
   threshold: 0.4,
   includeScore: true,
+  includeMatches: true,
   ignoreLocation: true,
   minMatchCharLength: 2,
+}
+
+// Match info from Fuse.js search
+export interface SearchMatch {
+  key: string
+  value?: string
+  indices: readonly [number, number][]
+}
+
+export interface SearchResult {
+  exercise: Exercise
+  matches: SearchMatch[]
 }
 
 // Lazy initialization - only load cache after i18n language is determined
@@ -424,7 +437,7 @@ async function loadExerciseDB(): Promise<Exercise[]> {
 }
 
 export function useExerciseDB() {
-  const [results, setResults] = useState<Exercise[]>([])
+  const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cacheVersion, setCacheVersion] = useState(0)
@@ -503,54 +516,63 @@ export function useExerciseDB() {
       if (searchTermRef.current !== query) return
 
       // Filter exercises
-      let filtered: Exercise[] = exercises
+      let filtered: SearchResult[] = exercises.map(ex => ({ exercise: ex, matches: [] }))
 
       // Fuzzy search across multiple fields using Fuse.js
       if (query) {
         if (fuseInstance) {
           const fuseResults = fuseInstance.search(query)
-          filtered = fuseResults.map(result => result.item)
+          filtered = fuseResults.map(result => ({
+            exercise: result.item,
+            matches: (result.matches || []).map(m => ({
+              key: m.key || '',
+              value: m.value,
+              indices: m.indices,
+            })),
+          }))
         } else {
           // Fallback to simple includes search if Fuse not initialized
-          filtered = filtered.filter(ex =>
-            ex.name.toLowerCase().includes(query) ||
-            ex.targetMuscles.some(m => m.toLowerCase().includes(query)) ||
-            ex.secondaryMuscles.some(m => m.toLowerCase().includes(query)) ||
-            (ex.equipment?.toLowerCase().includes(query) ?? false) ||
-            ex.category.toLowerCase().includes(query) ||
-            (ex.force?.toLowerCase().includes(query) ?? false) ||
-            (ex.mechanic?.toLowerCase().includes(query) ?? false) ||
-            ex.level.toLowerCase().includes(query)
-          )
+          filtered = exercises
+            .filter(ex =>
+              ex.name.toLowerCase().includes(query) ||
+              ex.targetMuscles.some(m => m.toLowerCase().includes(query)) ||
+              ex.secondaryMuscles.some(m => m.toLowerCase().includes(query)) ||
+              (ex.equipment?.toLowerCase().includes(query) ?? false) ||
+              ex.category.toLowerCase().includes(query) ||
+              (ex.force?.toLowerCase().includes(query) ?? false) ||
+              (ex.mechanic?.toLowerCase().includes(query) ?? false) ||
+              ex.level.toLowerCase().includes(query)
+            )
+            .map(ex => ({ exercise: ex, matches: [] }))
         }
       }
 
       // Apply filters
       if (filters.level) {
-        filtered = filtered.filter(ex => ex.level === filters.level)
+        filtered = filtered.filter(r => r.exercise.level === filters.level)
       }
 
       if (filters.category) {
-        filtered = filtered.filter(ex => ex.category === filters.category)
+        filtered = filtered.filter(r => r.exercise.category === filters.category)
       }
 
       if (filters.force) {
-        filtered = filtered.filter(ex => ex.force === filters.force)
+        filtered = filtered.filter(r => r.exercise.force === filters.force)
       }
 
       if (filters.mechanic) {
-        filtered = filtered.filter(ex => ex.mechanic === filters.mechanic)
+        filtered = filtered.filter(r => r.exercise.mechanic === filters.mechanic)
       }
 
       if (filters.equipment) {
-        filtered = filtered.filter(ex => ex.equipment === filters.equipment)
+        filtered = filtered.filter(r => r.exercise.equipment === filters.equipment)
       }
 
       if (filters.muscle) {
         const muscle = filters.muscle.toLowerCase()
-        filtered = filtered.filter(ex =>
-          ex.targetMuscles.some(m => m.toLowerCase() === muscle) ||
-          ex.secondaryMuscles.some(m => m.toLowerCase() === muscle)
+        filtered = filtered.filter(r =>
+          r.exercise.targetMuscles.some(m => m.toLowerCase() === muscle) ||
+          r.exercise.secondaryMuscles.some(m => m.toLowerCase() === muscle)
         )
       }
 

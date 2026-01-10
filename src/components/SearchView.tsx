@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Exercise, SearchFilters } from '../hooks/useExerciseDB'
+import type { Exercise, SearchFilters, SearchMatch } from '../hooks/useExerciseDB'
 import { useExerciseDB, debounce } from '../hooks/useExerciseDB'
 import type { Day } from '../lib/state'
 import { FilterPanel } from './FilterPanel'
@@ -151,12 +151,13 @@ export function SearchView({
           {/* Results - Grid */}
           {dbReady && !loading && results.length > 0 && (
             <div className="grid grid-cols-2 gap-3">
-              {results.map((exercise) => (
+              {results.map((result) => (
                 <SearchResultCard
-                  key={exercise.exerciseId}
-                  exercise={exercise}
-                  inDay={getExerciseDay(exercise.exerciseId)}
-                  onClick={() => setSelectedExercise(exercise)}
+                  key={result.exercise.exerciseId}
+                  exercise={result.exercise}
+                  matches={result.matches}
+                  inDay={getExerciseDay(result.exercise.exerciseId)}
+                  onClick={() => setSelectedExercise(result.exercise)}
                   activeDay={activeDay}
                   onAddToDay={activeDay ? (exId) => onAddToDay(activeDay, exId) : undefined}
                   onDoNow={onDoNow}
@@ -204,6 +205,7 @@ export function SearchView({
 
 interface SearchResultCardProps {
   exercise: Exercise
+  matches: SearchMatch[]
   inDay: string | null
   onClick: () => void
   onAddToDay?: (exerciseId: string) => void
@@ -211,8 +213,27 @@ interface SearchResultCardProps {
   activeDay?: string
 }
 
+// Get human-readable label for match keys
+function getMatchLabel(key: string): string {
+  const labels: Record<string, string> = {
+    name: 'name',
+    nameEn: 'name (EN)',
+    targetMuscles: 'muscle',
+    secondaryMuscles: 'muscle',
+    equipment: 'equipment',
+    category: 'category',
+    force: 'force',
+    mechanic: 'type',
+    level: 'level',
+    instructions: 'instructions',
+    searchTerms: 'match',
+  }
+  return labels[key] || key
+}
+
 function SearchResultCard({
   exercise,
+  matches,
   inDay,
   onClick,
   onAddToDay,
@@ -227,6 +248,24 @@ function SearchResultCard({
     pull: '↓',
     static: '•',
   }
+
+  // Get unique matched fields (excluding searchTerms duplicates)
+  const matchedFields = useMemo(() => {
+    const seen = new Set<string>()
+    const uniqueMatches: { key: string; value?: string }[] = []
+
+    for (const match of matches) {
+      // Skip searchTerms as it's redundant with other fields
+      if (match.key === 'searchTerms') continue
+
+      const label = getMatchLabel(match.key)
+      if (!seen.has(label)) {
+        seen.add(label)
+        uniqueMatches.push({ key: label, value: match.value })
+      }
+    }
+    return uniqueMatches.slice(0, 2) // Show max 2 match indicators
+  }, [matches])
 
   return (
     <div
@@ -260,6 +299,16 @@ function SearchResultCard({
       <div className="p-2">
         {/* Name */}
         <div className="font-medium text-sm line-clamp-2">{exercise.name}</div>
+
+        {/* Match indicator */}
+        {matchedFields.length > 0 && (
+          <div className="flex items-center gap-1 mt-0.5 text-[10px] text-yellow-500">
+            <span>✓</span>
+            <span className="truncate">
+              {matchedFields.map(m => m.key).join(', ')}
+            </span>
+          </div>
+        )}
 
         {/* All labels in one row */}
         <div className="flex flex-wrap gap-1 mt-0.5">
