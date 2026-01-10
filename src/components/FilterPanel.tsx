@@ -68,6 +68,13 @@ export function FilterPanel({ filters, onChange, resultCount }: FilterPanelProps
     onChange({ query: filters.query })
   }
 
+  // Translate filter value based on type
+  const translateFilterValue = (type: string, value: string): string => {
+    const key = `${type}.${value}`
+    const translated = t(key, { ns: 'common', defaultValue: value })
+    return translated
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -94,7 +101,7 @@ export function FilterPanel({ filters, onChange, resultCount }: FilterPanelProps
           {options.levels.map(level => (
             <FilterChip
               key={level}
-              label={level}
+              label={translateFilterValue('exerciseLevel', level)}
               selected={filters.level === level}
               onClick={() => handleToggle('level', level)}
             />
@@ -108,7 +115,7 @@ export function FilterPanel({ filters, onChange, resultCount }: FilterPanelProps
           {options.categories.map(cat => (
             <FilterChip
               key={cat}
-              label={cat}
+              label={translateFilterValue('exerciseCategory', cat)}
               selected={filters.category === cat}
               onClick={() => handleToggle('category', cat)}
             />
@@ -124,7 +131,7 @@ export function FilterPanel({ filters, onChange, resultCount }: FilterPanelProps
               {options.forces.map(force => (
                 <FilterChip
                   key={force}
-                  label={force}
+                  label={translateFilterValue('exerciseForce', force)}
                   selected={filters.force === force}
                   onClick={() => handleToggle('force', force)}
                 />
@@ -137,7 +144,7 @@ export function FilterPanel({ filters, onChange, resultCount }: FilterPanelProps
               {options.mechanics.map(mech => (
                 <FilterChip
                   key={mech}
-                  label={mech}
+                  label={translateFilterValue('exerciseMechanic', mech)}
                   selected={filters.mechanic === mech}
                   onClick={() => handleToggle('mechanic', mech)}
                 />
@@ -153,7 +160,7 @@ export function FilterPanel({ filters, onChange, resultCount }: FilterPanelProps
           {options.equipment.map(eq => (
             <FilterChip
               key={eq}
-              label={eq}
+              label={translateFilterValue('exerciseEquipment', eq)}
               selected={filters.equipment === eq}
               onClick={() => handleToggle('equipment', eq)}
             />
@@ -167,7 +174,7 @@ export function FilterPanel({ filters, onChange, resultCount }: FilterPanelProps
           {options.muscles.map(muscle => (
             <FilterChip
               key={muscle}
-              label={muscle}
+              label={translateFilterValue('muscle', muscle)}
               selected={filters.muscle === muscle}
               onClick={() => handleToggle('muscle', muscle)}
             />

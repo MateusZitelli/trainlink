@@ -24,5 +24,61 @@
     "sets": "séries",
     "seconds": "s",
     "rest": "descanso"
+  },
+  "exerciseLevel": {
+    "beginner": "Iniciante",
+    "intermediate": "Intermediário",
+    "expert": "Avançado"
+  },
+  "exerciseCategory": {
+    "cardio": "Cardio",
+    "olympic weightlifting": "Levantamento Olímpico",
+    "plyometrics": "Pliometria",
+    "powerlifting": "Powerlifting",
+    "strength": "Força",
+    "stretching": "Alongamento",
+    "strongman": "Strongman"
+  },
+  "exerciseForce": {
+    "pull": "Puxar",
+    "push": "Empurrar",
+    "static": "Estático"
+  },
+  "exerciseMechanic": {
+    "compound": "Composto",
+    "isolation": "Isolamento"
+  },
+  "exerciseEquipment": {
+    "bands": "Faixas Elásticas",
+    "barbell": "Barra",
+    "body only": "Peso Corporal",
+    "cable": "Cabo",
+    "dumbbell": "Halter",
+    "e-z curl bar": "Barra W",
+    "exercise ball": "Bola de Exercício",
+    "foam roll": "Rolo de Espuma",
+    "kettlebells": "Kettlebells",
+    "machine": "Máquina",
+    "medicine ball": "Bola Medicinal",
+    "other": "Outro"
+  },
+  "muscle": {
+    "abdominals": "Abdominais",
+    "abductors": "Abdutores",
+    "adductors": "Adutores",
+    "biceps": "Bíceps",
+    "calves": "Panturrilhas",
+    "chest": "Peito",
+    "forearms": "Antebraços",
+    "glutes": "Glúteos",
+    "hamstrings": "Posteriores de Coxa",
+    "lats": "Dorsais",
+    "lower back": "Lombar",
+    "middle back": "Costas Médias",
+    "neck": "Pescoço",
+    "quadriceps": "Quadríceps",
+    "shoulders": "Ombros",
+    "traps": "Trapézios",
+    "triceps": "Tríceps"
   }
 }
