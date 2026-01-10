@@ -198,17 +198,29 @@ function saveDBCache(exercises: Exercise[]) {
   }
 }
 
-// Global state - per language
-let exerciseCache = loadExerciseCache()
-let allExercises: Exercise[] = loadDBCache() ?? []
+// Global state - per language (initialized lazily after i18n is ready)
+let exerciseCache: Map<string, Exercise> | null = null
+let allExercises: Exercise[] | null = null
 let dbLoading = false
-let dbLoaded = allExercises.length > 0
-let currentLanguage = i18n.language
+let dbLoaded = false
+let currentLanguage: string | null = null
 const dbLoadCallbacks: (() => void)[] = []
 
-// Initialize filter options from cached exercises if available
-if (allExercises.length > 0 && filterOptions.levels.length === 0) {
-  filterOptions = deriveFilterOptions(allExercises)
+// Lazy initialization - only load cache after i18n language is determined
+function ensureInitialized() {
+  if (currentLanguage === i18n.language && exerciseCache !== null) {
+    return // Already initialized for current language
+  }
+
+  currentLanguage = i18n.language
+  exerciseCache = loadExerciseCache()
+  allExercises = loadDBCache() ?? []
+  dbLoaded = (allExercises?.length ?? 0) > 0
+
+  // Initialize filter options from cached exercises if available
+  if (allExercises && allExercises.length > 0 && filterOptions.levels.length === 0) {
+    filterOptions = deriveFilterOptions(allExercises)
+  }
 }
 
 // Reset database state for language change
@@ -235,10 +247,12 @@ function resetDBState() {
 
 // Load the full exercise database
 async function loadExerciseDB(): Promise<Exercise[]> {
-  if (dbLoaded) return allExercises
+  ensureInitialized()
+
+  if (dbLoaded && allExercises) return allExercises
   if (dbLoading) {
     return new Promise(resolve => {
-      dbLoadCallbacks.push(() => resolve(allExercises))
+      dbLoadCallbacks.push(() => resolve(allExercises || []))
     })
   }
 
@@ -253,8 +267,10 @@ async function loadExerciseDB(): Promise<Exercise[]> {
     allExercises = rawData.map(mapExercise)
 
     // Cache all exercises
-    allExercises.forEach(ex => exerciseCache.set(ex.exerciseId, ex))
-    saveExerciseCache(exerciseCache)
+    if (exerciseCache) {
+      allExercises.forEach(ex => exerciseCache!.set(ex.exerciseId, ex))
+      saveExerciseCache(exerciseCache)
+    }
     saveDBCache(allExercises)
 
     // Derive and cache filter options

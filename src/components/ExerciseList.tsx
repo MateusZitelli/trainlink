@@ -123,6 +123,7 @@ export function ExerciseList({
         values={items}
         onReorder={handleReorder}
         className="space-y-2"
+        style={{ touchAction: 'none' }}
       >
         <AnimatePresence initial={false} mode="popLayout">
           {items.map((item) => {
@@ -145,7 +146,7 @@ export function ExerciseList({
                   boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
                   zIndex: 50,
                 }}
-                style={{ position: 'relative' }}
+                style={{ position: 'relative', touchAction: 'none' }}
               >
                 <ExerciseRow
                   exercise={exercise}

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>i18n Timing Test</title>
+</head>
+<body>
+    <h1>i18n Initialization Timing Test</h1>
+    <div id="results"></div>
+
+    <script type="module">
+        import i18n from './src/lib/i18n.ts'
+
+        const results = []
+
+        results.push(`At module import: i18n.language = "${i18n.language}"`)
+        results.push(`At module import: i18n.isInitialized = ${i18n.isInitialized}`)
+
+        // Wait for init
+        i18n.on('initialized', () => {
+            results.push(`After init event: i18n.language = "${i18n.language}"`)
+        })
+
+        i18n.on('languageChanged', (lng) => {
+            results.push(`Language changed event: ${lng}`)
+        })
+
+        setTimeout(() => {
+            results.push(`After 100ms: i18n.language = "${i18n.language}"`)
+            results.push(`After 100ms: i18n.isInitialized = ${i18n.isInitialized}`)
+
+            document.getElementById('results').innerHTML = results.map(r => `<div>${r}</div>`).join('')
+        }, 100)
+    </script>
+</body>
+</html>
