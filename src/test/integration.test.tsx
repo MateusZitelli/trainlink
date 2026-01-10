@@ -983,91 +983,89 @@ describe('ExerciseRow Component', () => {
     })
   })
 
-  describe('Feature 3: Re-highlight values when they match predicted', () => {
-    it('highlights weight input when value matches predicted', () => {
+  describe('Feature 3: Progressive set input flow', () => {
+    it('shows quick state with predicted values', () => {
       render(
         <ExerciseRow {...baseProps} isSelected={true} />
       )
 
-      // Initial state: weight input should be highlighted (predicted)
-      const weightInput = screen.getByDisplayValue('100')
-      expect(weightInput).toHaveClass('border-blue-500/50')
+      // Quick state shows predicted values as text
+      expect(screen.getByText('100kg × 10')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /adjust/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /go/i })).toBeInTheDocument()
     })
 
-    it('removes highlight when value differs from predicted', () => {
+    it('shows expanded state when adjust is clicked', () => {
       render(
         <ExerciseRow {...baseProps} isSelected={true} />
       )
 
-      const weightInput = screen.getByDisplayValue('100')
+      // Click adjust to expand
+      const adjustButton = screen.getByRole('button', { name: /adjust/i })
+      fireEvent.click(adjustButton)
 
-      // Change value to something different
-      fireEvent.change(weightInput, { target: { value: '80' } })
-
-      // Should no longer be highlighted
-      expect(weightInput).not.toHaveClass('border-blue-500/50')
+      // Should show stepper controls
+      expect(screen.getByText('Weight')).toBeInTheDocument()
+      expect(screen.getByText('Reps')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /start set/i })).toBeInTheDocument()
     })
 
-    it('re-highlights weight when changed back to predicted value', () => {
+    it('shows active state with timer when Go is clicked', () => {
       render(
         <ExerciseRow {...baseProps} isSelected={true} />
       )
 
-      const weightInput = screen.getByDisplayValue('100')
+      // Click Go button
+      const goButton = screen.getByRole('button', { name: /go/i })
+      fireEvent.click(goButton)
 
-      // Change value away from predicted
-      fireEvent.change(weightInput, { target: { value: '80' } })
-      expect(weightInput).not.toHaveClass('border-blue-500/50')
-
-      // Change back to predicted value
-      fireEvent.change(weightInput, { target: { value: '100' } })
-      expect(weightInput).toHaveClass('border-blue-500/50')
+      // Timer should be running
+      expect(screen.getByText('0:00')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /done/i })).toBeInTheDocument()
     })
 
-    it('re-highlights reps when changed back to predicted value', () => {
+    it('shows confirm state with difficulty buttons after Done', () => {
       render(
         <ExerciseRow {...baseProps} isSelected={true} />
       )
 
-      const repsInput = screen.getByDisplayValue('10')
+      // Click Go button to start
+      const goButton = screen.getByRole('button', { name: /go/i })
+      fireEvent.click(goButton)
 
-      // Change value away from predicted
-      fireEvent.change(repsInput, { target: { value: '8' } })
-      expect(repsInput).not.toHaveClass('border-blue-500/50')
+      // Click Done to finish
+      const doneButton = screen.getByRole('button', { name: /done/i })
+      fireEvent.click(doneButton)
 
-      // Change back to predicted value
-      fireEvent.change(repsInput, { target: { value: '10' } })
-      expect(repsInput).toHaveClass('border-blue-500/50')
+      // Should show difficulty buttons
+      expect(screen.getByRole('button', { name: /easy/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /normal/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /hard/i })).toBeInTheDocument()
     })
 
-    it('hides prediction info when values differ from predicted', () => {
+    it('can adjust actual values before confirming', () => {
       render(
         <ExerciseRow {...baseProps} isSelected={true} />
       )
 
-      // Initially prediction info should be visible
-      expect(screen.getByText(/From last session/)).toBeInTheDocument()
+      // Start and finish set
+      fireEvent.click(screen.getByRole('button', { name: /go/i }))
+      fireEvent.click(screen.getByRole('button', { name: /done/i }))
 
-      // Change both values
-      const weightInput = screen.getByDisplayValue('100')
-      const repsInput = screen.getByDisplayValue('10')
-      fireEvent.change(weightInput, { target: { value: '80' } })
-      fireEvent.change(repsInput, { target: { value: '8' } })
+      // Click to adjust
+      const adjustLink = screen.getByRole('button', { name: /actually did different/i })
+      fireEvent.click(adjustLink)
 
-      // Prediction info should be hidden
-      expect(screen.queryByText(/From last session/)).not.toBeInTheDocument()
+      // Should show adjust state with steppers
+      expect(screen.getByText('What did you actually do?')).toBeInTheDocument()
     })
 
-    it('shows prediction info when at least one value matches', () => {
+    it('shows prediction info when values match predicted', () => {
       render(
         <ExerciseRow {...baseProps} isSelected={true} />
       )
 
-      // Change only weight
-      const weightInput = screen.getByDisplayValue('100')
-      fireEvent.change(weightInput, { target: { value: '80' } })
-
-      // Reps still matches, so prediction info should still show
+      // Prediction info should be visible in expanded view
       expect(screen.getByText(/From last session/)).toBeInTheDocument()
     })
   })
@@ -1108,11 +1106,9 @@ describe('ExerciseRow Component', () => {
         <ExerciseRow {...baseProps} isSelected={true} onClick={onClickMock} prediction={prediction2} />
       )
 
-      // Timer should be running - look for the timer display and three finish buttons
+      // Timer should be running - look for the timer display and Done button
       expect(screen.getByText('0:00')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /easy/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /normal/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /hard/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /done/i })).toBeInTheDocument()
     })
   })
 })

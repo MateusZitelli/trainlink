@@ -4,7 +4,7 @@ import type {
   Difficulty,
   HistoryEntry,
 } from "../lib/state";
-import { getLastSet, calculateE1rmMetrics } from "../lib/state";
+import { getLastSet, calculateE1rmMetrics, getLastSessionSets } from "../lib/state";
 import { useState, useEffect, useMemo } from "react";
 import { useImageRotation } from "../hooks/useImageRotation";
 import { useElapsedTimer } from "../hooks/useElapsedTimer";
@@ -12,11 +12,9 @@ import { formatTime } from "../lib/utils";
 import {
   SetsDisplay,
   PredictionDisplay,
-  SetInputs,
-  DifficultyButtons,
   ExerciseImage,
   E1rmDisplay,
-  DifficultyPredictor,
+  ProgressiveSetInput,
 } from "./shared";
 
 interface Exercise {
@@ -100,6 +98,15 @@ export function ExerciseRow({
     return calculateE1rmMetrics(history, exerciseId);
   }, [history, exerciseId]);
 
+  // Get last session sets for this exercise
+  const lastSessionSets = useMemo(() => {
+    return getLastSessionSets(history, exerciseId).map(set => ({
+      kg: set.kg,
+      reps: set.reps,
+      difficulty: set.difficulty,
+    }));
+  }, [history, exerciseId]);
+
   // Reset form when exercise changes
   useEffect(() => {
     setSetStartedAt(null);
@@ -117,9 +124,9 @@ export function ExerciseRow({
     onStartSet?.();
   };
 
-  const handleFinish = (difficulty?: Difficulty) => {
-    const kgNum = parseFloat(kg);
-    const repsNum = parseInt(reps);
+  const handleFinish = (difficulty?: Difficulty, actualKg?: number, actualReps?: number) => {
+    const kgNum = actualKg ?? parseFloat(kg);
+    const repsNum = actualReps ?? parseInt(reps);
     if (!isNaN(kgNum) && !isNaN(repsNum) && repsNum > 0) {
       const duration = setStartedAt
         ? Math.floor((Date.now() - setStartedAt) / 1000)
@@ -214,48 +221,7 @@ export function ExerciseRow({
     );
   }
 
-  // Expanded view - ACTIVE (compact UI with timer)
-  if (isActive) {
-    return (
-      <div className="bg-[var(--surface)] rounded-lg p-4 space-y-4">
-        <div className="flex gap-4 cursor-pointer" onClick={onClick}>
-          <ExerciseImage imageUrls={imageUrls} imageIndex={imageIndex} name={name} size="lg" />
-
-          <div className="flex-1 flex flex-col justify-center">
-            <div className="flex items-baseline gap-2">
-              <span className="text-5xl font-mono font-bold">{formatTime(elapsed)}</span>
-              {lastSetDuration !== undefined && (
-                <span className="text-lg text-[var(--text-muted)] font-mono">
-                  / {formatTime(lastSetDuration)}
-                </span>
-              )}
-            </div>
-            <div className="text-sm text-[var(--text-muted)] mt-1">{name}</div>
-            {prediction && (
-              <div className="text-sm text-blue-400 mt-1">
-                <PredictionDisplay prediction={prediction} />
-              </div>
-            )}
-          </div>
-        </div>
-
-        <SetInputs
-          kg={kg}
-          reps={reps}
-          restTime={restTime}
-          isKgPredicted={isKgPredicted}
-          isRepsPredicted={isRepsPredicted}
-          onKgChange={setKg}
-          onRepsChange={setReps}
-          onRestTimeChange={onSetRestTime}
-        />
-
-        <DifficultyButtons onFinish={handleFinish} />
-      </div>
-    );
-  }
-
-  // Expanded view - NOT ACTIVE (full UI)
+  // Expanded view - using ProgressiveSetInput for both active and inactive states
   return (
     <div className="bg-[var(--surface)] rounded-lg p-4 space-y-4">
       {showFullImage && imageUrls.length > 0 && (
@@ -279,15 +245,6 @@ export function ExerciseRow({
         <div className="flex-1 min-w-0">
           <div className="font-medium text-lg">{name}</div>
           {meta && <div className="text-sm text-[var(--text-muted)]">{meta}</div>}
-          <div className="mt-1 text-sm text-[var(--text-muted)]">
-            {todaySets.length > 0 ? (
-              <span>Set #{todaySets.length + 1}</span>
-            ) : prediction ? (
-              <span>Suggested: {prediction.kg}kg × {prediction.reps}</span>
-            ) : (
-              <span>First set</span>
-            )}
-          </div>
           <SetsDisplay sets={todaySets} />
         </div>
 
@@ -374,38 +331,21 @@ export function ExerciseRow({
         </div>
       )}
 
-      {e1rmMetrics.current && kg && reps && (
-        <div className="px-3 py-2 bg-[var(--bg)] rounded-lg">
-          <DifficultyPredictor
-            e1rm={e1rmMetrics.current}
-            currentKg={parseFloat(kg) || 0}
-            currentReps={parseInt(reps) || 0}
-            onSelectDifficulty={(newKg) => setKg(newKg.toString())}
-          />
-        </div>
-      )}
-
-      <SetInputs
+      <ProgressiveSetInput
         kg={kg}
         reps={reps}
         restTime={restTime}
-        isKgPredicted={isKgPredicted}
-        isRepsPredicted={isRepsPredicted}
+        e1rm={e1rmMetrics.current}
+        lastSessionSets={lastSessionSets}
+        setNumber={todaySets.length + 1}
+        isTimerRunning={isActive}
+        elapsed={elapsed}
         onKgChange={setKg}
         onRepsChange={setReps}
         onRestTimeChange={onSetRestTime}
+        onStart={handleStart}
+        onFinish={handleFinish}
       />
-
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); handleStart(); }}
-        className="w-full py-3 bg-[var(--text)] text-[var(--bg)] rounded-lg font-medium flex items-center justify-center gap-2 cursor-pointer"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-          <polygon points="5 3 19 12 5 21 5 3" />
-        </svg>
-        Start Set {todaySets.length > 0 && `#${todaySets.length + 1}`}
-      </button>
     </div>
   );
 }

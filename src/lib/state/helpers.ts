@@ -121,3 +121,35 @@ export function buildExerciseOrder(currentSets: SetEntry[]): string[] {
   }
   return exerciseOrder
 }
+
+// Get all sets for an exercise from the most recent completed session
+export function getLastSessionSets(history: HistoryEntry[], exId: string): SetEntry[] {
+  const sessionEndIndices: number[] = []
+  for (let i = 0; i < history.length; i++) {
+    if (isSessionEndMarker(history[i])) {
+      sessionEndIndices.push(i)
+    }
+  }
+
+  if (sessionEndIndices.length === 0) return []
+
+  // Look through sessions from most recent to oldest
+  for (let i = sessionEndIndices.length - 1; i >= 0; i--) {
+    const sessionEndIdx = sessionEndIndices[i]
+    const sessionStartIdx = i > 0 ? sessionEndIndices[i - 1] + 1 : 0
+
+    const setsInSession: SetEntry[] = []
+    for (let j = sessionStartIdx; j < sessionEndIdx; j++) {
+      const entry = history[j]
+      if (isSetEntry(entry) && entry.exId === exId) {
+        setsInSession.push(entry)
+      }
+    }
+
+    if (setsInSession.length > 0) {
+      return setsInSession
+    }
+  }
+
+  return []
+}

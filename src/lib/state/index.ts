@@ -29,6 +29,7 @@ export {
   getCurrentSessionSets,
   parseHistoryIntoSessions,
   buildExerciseOrder,
+  getLastSessionSets,
 } from './helpers'
 
 export { formatDetailedPrediction } from './format'
