@@ -177,7 +177,7 @@ export function SessionLog({
   const [editValues, setEditValues] = useState({ kg: '', reps: '', rest: '' })
   const [editingRestTs, setEditingRestTs] = useState<number | null>(null)
   const [editRestValue, setEditRestValue] = useState('')
-  const [isListCollapsed, setIsListCollapsed] = useState(false)
+  const [isListCollapsed, setIsListCollapsed] = useState(true)
   const [showScrollTop, setShowScrollTop] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
