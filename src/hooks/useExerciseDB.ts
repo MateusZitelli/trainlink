@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import Fuse from 'fuse.js'
+import Fuse, { type IFuseOptions } from 'fuse.js'
 import i18n from '../lib/i18n'
 
 const EXERCISES_URL_EN = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json'
@@ -210,7 +210,7 @@ let currentLanguage: string | null = null
 const dbLoadCallbacks: (() => void)[] = []
 
 // Fuse.js options for fuzzy search
-const fuseOptions: Fuse.IFuseOptions<Exercise> = {
+const fuseOptions: IFuseOptions<Exercise> = {
   keys: [
     { name: 'name', weight: 2 },
     { name: 'targetMuscles', weight: 1.5 },
