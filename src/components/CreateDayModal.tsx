@@ -95,7 +95,7 @@ function PackCard({
       <div className="flex items-center justify-between">
         <ExerciseImageStack exercises={exercises} max={6} />
         <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
-          <span>{pack.frequency}</span>
+          <span>{t(`createDay.frequency.${pack.frequency}`, { defaultValue: pack.frequency })}</span>
           <span>•</span>
           <span>{t('createDay.days', { count: pack.days.length })}</span>
         </div>
@@ -291,7 +291,7 @@ export function CreateDayModal({
               </div>
               <p className="text-[var(--text-muted)]">{translateTemplate(t, packDescKey, selectedPack.description)}</p>
               <div className="flex items-center gap-3 mt-2 text-sm text-[var(--text-muted)]">
-                <span>{selectedPack.frequency}</span>
+                <span>{t(`createDay.frequency.${selectedPack.frequency}`, { defaultValue: selectedPack.frequency })}</span>
                 <span>•</span>
                 <span>{t('createDay.days', { count: selectedPack.days.length })}</span>
               </div>

@@ -52,7 +52,14 @@
     "addDays_other": "Add {{count}} Days",
     "blankDayPlaceholder": "Or create blank day...",
     "days_one": "{{count}} day",
-    "days_other": "{{count}} days"
+    "days_other": "{{count}} days",
+    "frequency": {
+      "2x/week": "2x/week",
+      "3x/week": "3x/week",
+      "4x/week": "4x/week",
+      "5x/week": "5x/week",
+      "6x/week": "6x/week"
+    }
   },
   "session": {
     "active": "Active",
