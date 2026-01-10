@@ -135,18 +135,27 @@ export function ProgressiveSetInput({
   const lastSet = lastSessionSets[setNumber - 1]
   const hasLastSession = lastSessionSets.length > 0
 
+  // Check if current values match the corresponding set from last session
+  const matchesLastSession = lastSet && kgNum === lastSet.kg && repsNum === lastSet.reps
+
   // STATE 1: Quick start
   if (uiState === 'quick') {
     return (
       <div className="space-y-3">
-        <div className="flex items-center justify-between p-4 bg-[var(--bg)] rounded-lg">
+        <div className={`flex items-center justify-between p-4 rounded-lg ${
+          matchesLastSession
+            ? 'bg-blue-500/10 ring-1 ring-blue-500/30'
+            : 'bg-[var(--bg)]'
+        }`}>
           <div>
             <div className="text-2xl font-bold">
               {kgNum}kg × {repsNum}
             </div>
             <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
-              {lastSet ? (
-                <span>like last time</span>
+              {matchesLastSession ? (
+                <span className="text-blue-400">same as last session</span>
+              ) : lastSet ? (
+                <span>last: {lastSet.kg}×{lastSet.reps}</span>
               ) : (
                 <span>Set #{setNumber}</span>
               )}
@@ -334,7 +343,15 @@ export function ProgressiveSetInput({
             >
               −
             </button>
-            <span className="w-12 text-center font-medium">{restTime}s</span>
+            <div className="relative">
+              <input
+                type="number"
+                value={restTime}
+                onChange={(e) => onRestTimeChange(Math.max(0, parseInt(e.target.value) || 0))}
+                className="w-16 text-center font-medium bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500/50 rounded"
+              />
+              <span className="absolute right-1 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] pointer-events-none">s</span>
+            </div>
             <button
               type="button"
               onClick={() => onRestTimeChange(restTime + 15)}
