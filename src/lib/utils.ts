@@ -1,27 +1,27 @@
 import type { Difficulty } from './state'
 
-// Difficulty color mappings - consolidated from multiple files
+// Difficulty color mappings - using CSS variables for theme support
 export const DIFFICULTY_COLORS = {
   easy: {
-    bg: 'bg-blue-500',
-    border: 'border-blue-500',
-    text: 'text-blue-400',
+    bg: 'bg-[var(--diff-chill)]',
+    border: 'border-[var(--diff-chill)]',
+    text: 'text-[var(--diff-chill)]',
   },
   normal: {
-    bg: 'bg-[var(--success)]',
-    border: 'border-[var(--success)]',
-    text: 'text-[var(--success)]',
+    bg: 'bg-[var(--diff-solid)]',
+    border: 'border-[var(--diff-solid)]',
+    text: 'text-[var(--diff-solid)]',
   },
   hard: {
-    bg: 'bg-orange-500',
-    border: 'border-orange-500',
-    text: 'text-orange-400',
+    bg: 'bg-[var(--diff-spicy)]',
+    border: 'border-[var(--diff-spicy)]',
+    text: 'text-[var(--diff-spicy)]',
   },
 } as const
 
 export function getDifficultyColor(difficulty?: Difficulty): string {
-  if (!difficulty) return 'bg-[var(--success)]'
-  return DIFFICULTY_COLORS[difficulty]?.bg ?? 'bg-[var(--success)]'
+  if (!difficulty) return 'bg-[var(--diff-solid)]'
+  return DIFFICULTY_COLORS[difficulty]?.bg ?? 'bg-[var(--diff-solid)]'
 }
 
 export function getDifficultyBorderColor(difficulty?: Difficulty): string {
@@ -83,13 +83,13 @@ export function formatTimeOfDay(ts: number): string {
 
 // Level colors for exercise cards
 export const LEVEL_COLORS: Record<string, string> = {
-  beginner: 'bg-green-500',
-  intermediate: 'bg-yellow-500',
-  expert: 'bg-red-500',
+  beginner: 'bg-emerald-500',
+  intermediate: 'bg-amber-500',
+  expert: 'bg-rose-500',
 }
 
 export const LEVEL_COLORS_STYLED: Record<string, string> = {
-  beginner: 'bg-green-500/20 text-green-400',
-  intermediate: 'bg-yellow-500/20 text-yellow-400',
-  expert: 'bg-red-500/20 text-red-400',
+  beginner: 'bg-emerald-500/20 text-emerald-400',
+  intermediate: 'bg-amber-500/20 text-amber-400',
+  expert: 'bg-rose-500/20 text-rose-400',
 }

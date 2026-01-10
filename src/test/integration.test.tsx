@@ -1037,10 +1037,10 @@ describe('ExerciseRow Component', () => {
       const doneButton = screen.getByRole('button', { name: /done/i })
       fireEvent.click(doneButton)
 
-      // Should show difficulty buttons
-      expect(screen.getByRole('button', { name: /easy/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /normal/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /hard/i })).toBeInTheDocument()
+      // Should show difficulty buttons (Chill/Solid/Spicy)
+      expect(screen.getByRole('button', { name: /chill/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /solid/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /spicy/i })).toBeInTheDocument()
     })
 
     it('can adjust actual values before confirming', () => {

@@ -34,22 +34,22 @@ type UIState = 'quick' | 'expanded' | 'active' | 'confirm' | 'adjust'
 
 const DIFFICULTY_COLORS: Record<PredictedDifficulty, string> = {
   warmup: 'bg-gray-500',
-  easy: 'bg-green-500',
-  normal: 'bg-yellow-500',
-  hard: 'bg-red-500',
+  easy: 'bg-[var(--diff-chill)]',
+  normal: 'bg-[var(--diff-solid)]',
+  hard: 'bg-[var(--diff-spicy)]',
 }
 
 const DIFFICULTY_DOT_COLORS: Record<string, string> = {
-  easy: 'bg-green-500',
-  normal: 'bg-yellow-500',
-  hard: 'bg-red-500',
+  easy: 'bg-[var(--diff-chill)]',
+  normal: 'bg-[var(--diff-solid)]',
+  hard: 'bg-[var(--diff-spicy)]',
 }
 
 const DIFFICULTY_LABELS: Record<PredictedDifficulty, string> = {
-  warmup: 'Warmup',
-  easy: 'Easy',
-  normal: 'Normal',
-  hard: 'Hard',
+  warmup: 'Ease in',
+  easy: 'Chill',
+  normal: 'Solid',
+  hard: 'Spicy',
 }
 
 export function ProgressiveSetInput({
@@ -406,7 +406,7 @@ export function ProgressiveSetInput({
         <button
           type="button"
           onClick={handleSetDone}
-          className="w-full py-4 bg-green-500 text-white rounded-lg font-medium text-lg"
+          className="w-full py-4 bg-[var(--success)] text-white rounded-lg font-medium text-lg"
         >
           Done
         </button>
@@ -423,33 +423,37 @@ export function ProgressiveSetInput({
     return (
       <div className="space-y-4">
         <div className="text-center py-4">
-          <div className="text-sm text-[var(--text-muted)]">Set complete! {formatTime(elapsed)}</div>
+          <div className="text-sm text-[var(--text-muted)]">That's a wrap! {formatTime(elapsed)}</div>
           <div className="text-2xl font-bold mt-2">
             Log as {actualKgNum}kg × {actualRepsNum}?
           </div>
+        </div>
+
+        <div className="text-sm text-[var(--text-muted)] text-center">
+          How'd that feel?
         </div>
 
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => handleConfirmWithDifficulty('easy')}
-            className="flex-1 py-4 bg-green-500 text-white rounded-lg font-medium"
+            className="flex-1 py-4 bg-[var(--diff-chill)] text-white rounded-lg font-medium"
           >
-            Easy
+            Chill
           </button>
           <button
             type="button"
             onClick={() => handleConfirmWithDifficulty('normal')}
-            className="flex-1 py-4 bg-yellow-500 text-white rounded-lg font-medium"
+            className="flex-1 py-4 bg-[var(--diff-solid)] text-white rounded-lg font-medium"
           >
-            Normal
+            Solid
           </button>
           <button
             type="button"
             onClick={() => handleConfirmWithDifficulty('hard')}
-            className="flex-1 py-4 bg-red-500 text-white rounded-lg font-medium"
+            className="flex-1 py-4 bg-[var(--diff-spicy)] text-white rounded-lg font-medium"
           >
-            Hard
+            Spicy
           </button>
         </div>
 
@@ -547,23 +551,23 @@ export function ProgressiveSetInput({
           <button
             type="button"
             onClick={() => handleConfirmWithDifficulty('easy')}
-            className="flex-1 py-3 bg-green-500 text-white rounded-lg font-medium"
+            className="flex-1 py-3 bg-[var(--diff-chill)] text-white rounded-lg font-medium"
           >
-            Easy
+            Chill
           </button>
           <button
             type="button"
             onClick={() => handleConfirmWithDifficulty('normal')}
-            className="flex-1 py-3 bg-yellow-500 text-white rounded-lg font-medium"
+            className="flex-1 py-3 bg-[var(--diff-solid)] text-white rounded-lg font-medium"
           >
-            Normal
+            Solid
           </button>
           <button
             type="button"
             onClick={() => handleConfirmWithDifficulty('hard')}
-            className="flex-1 py-3 bg-red-500 text-white rounded-lg font-medium"
+            className="flex-1 py-3 bg-[var(--diff-spicy)] text-white rounded-lg font-medium"
           >
-            Hard
+            Spicy
           </button>
         </div>
 

@@ -8,7 +8,7 @@ export function DifficultyButtons({ onFinish }: DifficultyButtonsProps) {
   return (
     <>
       <div className="text-sm text-[var(--text-muted)] text-center">
-        How was it?
+        How'd that feel?
       </div>
       <div className="flex gap-2">
         <button
@@ -17,9 +17,9 @@ export function DifficultyButtons({ onFinish }: DifficultyButtonsProps) {
             e.stopPropagation()
             onFinish("easy")
           }}
-          className="flex-1 py-3 bg-blue-500 text-white rounded-lg font-medium cursor-pointer"
+          className="flex-1 py-3 bg-[var(--diff-chill)] text-white rounded-lg font-medium cursor-pointer"
         >
-          Easy
+          Chill
         </button>
         <button
           type="button"
@@ -27,9 +27,9 @@ export function DifficultyButtons({ onFinish }: DifficultyButtonsProps) {
             e.stopPropagation()
             onFinish("normal")
           }}
-          className="flex-1 py-3 bg-[var(--success)] text-white rounded-lg font-medium cursor-pointer"
+          className="flex-1 py-3 bg-[var(--diff-solid)] text-white rounded-lg font-medium cursor-pointer"
         >
-          Normal
+          Solid
         </button>
         <button
           type="button"
@@ -37,9 +37,9 @@ export function DifficultyButtons({ onFinish }: DifficultyButtonsProps) {
             e.stopPropagation()
             onFinish("hard")
           }}
-          className="flex-1 py-3 bg-orange-500 text-white rounded-lg font-medium cursor-pointer"
+          className="flex-1 py-3 bg-[var(--diff-spicy)] text-white rounded-lg font-medium cursor-pointer"
         >
-          Hard
+          Spicy
         </button>
       </div>
     </>
