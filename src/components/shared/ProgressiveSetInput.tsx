@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'motion/react'
 import type { Difficulty, PredictedDifficulty } from '../../lib/state'
 import { predictDifficulty, getWeightForDifficulty } from '../../lib/state'
+import { springs } from '../../lib/animations'
 
 interface LastSessionSet {
   kg: number
@@ -173,20 +175,25 @@ export function ProgressiveSetInput({
             </div>
           </div>
           <div className="flex gap-2">
-            <button
+            <motion.button
               type="button"
               onClick={() => setUIState('expanded')}
               className="px-4 py-2 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
               Adjust
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               type="button"
               onClick={handleStartSet}
               className="px-6 py-2 bg-[var(--text)] text-[var(--bg)] rounded-lg font-medium"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.92 }}
+              transition={springs.bouncy}
             >
               Go
-            </button>
+            </motion.button>
           </div>
         </div>
       </div>
@@ -480,30 +487,40 @@ export function ProgressiveSetInput({
           {/* Actual weight stepper */}
           <div className="flex-1 p-3 bg-[var(--bg)] rounded-lg">
             <div className="flex items-center justify-center gap-2">
-              <button
+              <motion.button
                 type="button"
                 onClick={() => handleActualStepKg(-2.5)}
                 className="w-10 h-10 rounded-lg bg-[var(--surface)] hover:bg-[var(--surface-hover)]"
+                whileHover={{ scale: 1.15, rotate: -5 }}
+                whileTap={{ scale: 0.85, rotate: -15 }}
+                transition={springs.bouncy}
               >
                 −
-              </button>
+              </motion.button>
               <div className="text-center">
-                <input
+                <motion.input
                   type="number"
                   value={actualKg}
                   onChange={(e) => setActualKg(e.target.value)}
                   className="w-20 text-center text-2xl font-bold bg-transparent border-none focus:outline-none"
                   step="0.5"
+                  key={actualKg}
+                  initial={{ scale: 1.2 }}
+                  animate={{ scale: 1 }}
+                  transition={springs.bouncy}
                 />
                 <div className="text-xs text-[var(--text-muted)]">kg</div>
               </div>
-              <button
+              <motion.button
                 type="button"
                 onClick={() => handleActualStepKg(2.5)}
                 className="w-10 h-10 rounded-lg bg-[var(--surface)] hover:bg-[var(--surface-hover)]"
+                whileHover={{ scale: 1.15, rotate: 5 }}
+                whileTap={{ scale: 0.85, rotate: 15 }}
+                transition={springs.bouncy}
               >
                 +
-              </button>
+              </motion.button>
             </div>
             {parseFloat(actualKg) !== kgNum && (
               <div className="text-xs text-center text-[var(--text-muted)] mt-1">
@@ -515,29 +532,39 @@ export function ProgressiveSetInput({
           {/* Actual reps stepper */}
           <div className="flex-1 p-3 bg-[var(--bg)] rounded-lg">
             <div className="flex items-center justify-center gap-2">
-              <button
+              <motion.button
                 type="button"
                 onClick={() => handleActualStepReps(-1)}
                 className="w-10 h-10 rounded-lg bg-[var(--surface)] hover:bg-[var(--surface-hover)]"
+                whileHover={{ scale: 1.15, rotate: -5 }}
+                whileTap={{ scale: 0.85, rotate: -15 }}
+                transition={springs.bouncy}
               >
                 −
-              </button>
+              </motion.button>
               <div className="text-center">
-                <input
+                <motion.input
                   type="number"
                   value={actualReps}
                   onChange={(e) => setActualReps(e.target.value)}
                   className="w-16 text-center text-2xl font-bold bg-transparent border-none focus:outline-none"
+                  key={actualReps}
+                  initial={{ scale: 1.2 }}
+                  animate={{ scale: 1 }}
+                  transition={springs.bouncy}
                 />
                 <div className="text-xs text-[var(--text-muted)]">reps</div>
               </div>
-              <button
+              <motion.button
                 type="button"
                 onClick={() => handleActualStepReps(1)}
                 className="w-10 h-10 rounded-lg bg-[var(--surface)] hover:bg-[var(--surface-hover)]"
+                whileHover={{ scale: 1.15, rotate: 5 }}
+                whileTap={{ scale: 0.85, rotate: 15 }}
+                transition={springs.bouncy}
               >
                 +
-              </button>
+              </motion.button>
             </div>
             {parseInt(actualReps) !== repsNum && (
               <div className="text-xs text-center text-[var(--text-muted)] mt-1">
@@ -548,27 +575,36 @@ export function ProgressiveSetInput({
         </div>
 
         <div className="flex gap-2">
-          <button
+          <motion.button
             type="button"
             onClick={() => handleConfirmWithDifficulty('easy')}
             className="flex-1 py-3 bg-[var(--diff-chill)] text-white rounded-lg font-medium"
+            whileHover={{ scale: 1.08, y: -3 }}
+            whileTap={{ scale: 0.92 }}
+            transition={springs.bouncy}
           >
             Chill
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             type="button"
             onClick={() => handleConfirmWithDifficulty('normal')}
             className="flex-1 py-3 bg-[var(--diff-solid)] text-white rounded-lg font-medium"
+            whileHover={{ scale: 1.08, y: -3 }}
+            whileTap={{ scale: 0.92 }}
+            transition={springs.bouncy}
           >
             Solid
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             type="button"
             onClick={() => handleConfirmWithDifficulty('hard')}
             className="flex-1 py-3 bg-[var(--diff-spicy)] text-white rounded-lg font-medium"
+            whileHover={{ scale: 1.08, y: -3 }}
+            whileTap={{ scale: 0.92 }}
+            transition={springs.bouncy}
           >
             Spicy
-          </button>
+          </motion.button>
         </div>
 
         <button
