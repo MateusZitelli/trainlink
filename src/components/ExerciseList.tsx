@@ -111,24 +111,26 @@ export function ExerciseList({
                       index={index}
                     >
                       {(dragProvided, snapshot) => (
-                        <motion.div
+                        <div
                           ref={dragProvided.innerRef}
                           {...dragProvided.draggableProps}
                           {...dragProvided.dragHandleProps}
                           style={dragProvided.draggableProps.style}
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{
-                            opacity: 1,
-                            y: 0,
-                            scale: snapshot.isDragging ? 1.02 : 1,
-                            boxShadow: snapshot.isDragging
-                              ? '0 8px 20px rgba(0,0,0,0.15)'
-                              : '0 0 0 rgba(0,0,0,0)',
-                          }}
-                          exit={{ opacity: 0, y: -10, height: 0 }}
-                          transition={springs.snappy}
                         >
-                          <ExerciseRow
+                          <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{
+                              opacity: 1,
+                              y: 0,
+                              scale: snapshot.isDragging ? 1.02 : 1,
+                              boxShadow: snapshot.isDragging
+                                ? '0 8px 20px rgba(0,0,0,0.15)'
+                                : '0 0 0 rgba(0,0,0,0)',
+                            }}
+                            exit={{ opacity: 0, y: -10, height: 0 }}
+                            transition={springs.snappy}
+                          >
+                            <ExerciseRow
                             exercise={exercise}
                             exerciseId={item.exId}
                             todaySets={todaySets}
@@ -143,7 +145,8 @@ export function ExerciseList({
                             onSetRestTime={(seconds) => onSetRestTime(item.exId, seconds)}
                             onStartSet={onClearRest}
                           />
-                        </motion.div>
+                          </motion.div>
+                        </div>
                       )}
                     </Draggable>
                   )

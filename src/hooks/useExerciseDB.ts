@@ -205,6 +205,7 @@ let dbLoading = false
 let dbLoaded = allExercises.length > 0
 let currentLanguage = i18n.language
 const dbLoadCallbacks: (() => void)[] = []
+const languageChangeCallbacks: (() => void)[] = []
 
 // Initialize filter options from cached exercises if available
 if (allExercises.length > 0 && filterOptions.levels.length === 0) {
@@ -221,6 +222,20 @@ function resetDBState() {
   if (allExercises.length > 0) {
     filterOptions = deriveFilterOptions(allExercises)
   }
+}
+
+// Singleton language change handler - only set up once at module level
+let languageListenerSetup = false
+function setupLanguageListener() {
+  if (languageListenerSetup) return
+  languageListenerSetup = true
+
+  i18n.on('languageChanged', async () => {
+    resetDBState()
+    await loadExerciseDB()
+    // Notify all hook instances to update
+    languageChangeCallbacks.forEach(cb => cb())
+  })
 }
 
 // Load the full exercise database
@@ -274,8 +289,11 @@ export function useExerciseDB() {
 
   // Load DB on mount and handle language changes
   useEffect(() => {
+    // Set up singleton language listener
+    setupLanguageListener()
+
     const loadDB = async () => {
-      // Check if language changed
+      // Check if language changed since module init
       if (currentLanguage !== i18n.language) {
         resetDBState()
         setDbReady(false)
@@ -290,20 +308,17 @@ export function useExerciseDB() {
 
     loadDB()
 
-    // Listen for language changes
+    // Register callback for language changes
     const handleLanguageChange = () => {
-      resetDBState()
-      setDbReady(false)
+      setDbReady(true)
       setResults([])
-      loadExerciseDB().then(() => {
-        setDbReady(true)
-        setCacheVersion(v => v + 1)
-      })
+      setCacheVersion(v => v + 1)
     }
 
-    i18n.on('languageChanged', handleLanguageChange)
+    languageChangeCallbacks.push(handleLanguageChange)
     return () => {
-      i18n.off('languageChanged', handleLanguageChange)
+      const idx = languageChangeCallbacks.indexOf(handleLanguageChange)
+      if (idx >= 0) languageChangeCallbacks.splice(idx, 1)
     }
   }, [])
 
