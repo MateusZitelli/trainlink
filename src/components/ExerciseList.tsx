@@ -2,10 +2,113 @@ import type { Day, HistoryEntry, SetEntry } from '../lib/state'
 import { getSetsForExerciseToday, getDefaultRest, predictNextExercise, predictExerciseValues, getCurrentSessionSets } from '../lib/state'
 import { ExerciseRow } from './ExerciseRow'
 import { useExerciseDB } from '../hooks/useExerciseDB'
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Reorder, AnimatePresence } from 'motion/react'
+import { Reorder, AnimatePresence, useDragControls } from 'motion/react'
 import { springs } from '../lib/animations'
+
+const HOLD_DURATION = 300 // ms to hold before drag starts
+
+// Hook for hold-to-drag behavior
+function useHoldToDrag(dragControls: ReturnType<typeof useDragControls>) {
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const startPos = useRef<{ x: number; y: number } | null>(null)
+  const [isHolding, setIsHolding] = useState(false)
+  const isDragging = useRef(false)
+
+  const clearHold = useCallback(() => {
+    if (holdTimer.current) {
+      clearTimeout(holdTimer.current)
+      holdTimer.current = null
+    }
+    setIsHolding(false)
+    startPos.current = null
+  }, [])
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    // Only handle primary pointer (touch or left click)
+    if (e.button !== 0) return
+
+    startPos.current = { x: e.clientX, y: e.clientY }
+    isDragging.current = false
+
+    holdTimer.current = setTimeout(() => {
+      if (startPos.current) {
+        setIsHolding(true)
+        isDragging.current = true
+        // Vibrate on mobile if available
+        if (navigator.vibrate) {
+          navigator.vibrate(50)
+        }
+        dragControls.start(e.nativeEvent as PointerEvent)
+      }
+    }, HOLD_DURATION)
+  }, [dragControls])
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!startPos.current || isDragging.current) return
+
+    // If moved more than 10px before hold completes, cancel (user is scrolling)
+    const dx = e.clientX - startPos.current.x
+    const dy = e.clientY - startPos.current.y
+    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+      clearHold()
+    }
+  }, [clearHold])
+
+  const handlePointerUp = useCallback(() => {
+    clearHold()
+    isDragging.current = false
+  }, [clearHold])
+
+  const handlePointerCancel = useCallback(() => {
+    clearHold()
+    isDragging.current = false
+  }, [clearHold])
+
+  return {
+    isHolding,
+    handlers: {
+      onPointerDown: handlePointerDown,
+      onPointerMove: handlePointerMove,
+      onPointerUp: handlePointerUp,
+      onPointerCancel: handlePointerCancel,
+    },
+  }
+}
+
+// Wrapper component for reorderable exercise row with hold-to-drag
+function ReorderableExerciseRow({
+  item,
+  children,
+}: {
+  item: SortableItem
+  children: React.ReactNode
+}) {
+  const dragControls = useDragControls()
+  const { isHolding, handlers } = useHoldToDrag(dragControls)
+
+  return (
+    <Reorder.Item
+      value={item}
+      dragListener={false}
+      dragControls={dragControls}
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={springs.snappy}
+      whileDrag={{
+        scale: 1.02,
+        boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
+        zIndex: 50,
+      }}
+      className={`relative ${isHolding ? 'ring-2 ring-[var(--accent)]' : ''}`}
+      {...handlers}
+    >
+      {children}
+    </Reorder.Item>
+  )
+}
 
 interface ExerciseListProps {
   day: Day
@@ -123,7 +226,6 @@ export function ExerciseList({
         values={items}
         onReorder={handleReorder}
         className="space-y-2"
-        style={{ touchAction: 'none' }}
       >
         <AnimatePresence initial={false} mode="popLayout">
           {items.map((item) => {
@@ -134,20 +236,7 @@ export function ExerciseList({
             const isNextExercise = nextExercisePrediction?.exId === item.exId
 
             return (
-              <Reorder.Item
-                key={item.id}
-                value={item}
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={springs.snappy}
-                whileDrag={{
-                  scale: 1.02,
-                  boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
-                  zIndex: 50,
-                }}
-                style={{ position: 'relative', touchAction: 'none' }}
-              >
+              <ReorderableExerciseRow key={item.id} item={item}>
                 <ExerciseRow
                   exercise={exercise}
                   exerciseId={item.exId}
@@ -163,7 +252,7 @@ export function ExerciseList({
                   onSetRestTime={(seconds) => onSetRestTime(item.exId, seconds)}
                   onStartSet={onClearRest}
                 />
-              </Reorder.Item>
+              </ReorderableExerciseRow>
             )
           })}
         </AnimatePresence>
