@@ -3,6 +3,7 @@ import { motion } from 'motion/react'
 import type { Difficulty, PredictedDifficulty } from '../../lib/state'
 import { predictDifficulty, getWeightForDifficulty } from '../../lib/state'
 import { springs } from '../../lib/animations'
+import { useTranslation } from 'react-i18next'
 
 interface LastSessionSet {
   kg: number
@@ -47,13 +48,6 @@ const DIFFICULTY_DOT_COLORS: Record<string, string> = {
   hard: 'bg-[var(--diff-spicy)]',
 }
 
-const DIFFICULTY_LABELS: Record<PredictedDifficulty, string> = {
-  warmup: 'Ease in',
-  easy: 'Chill',
-  normal: 'Solid',
-  hard: 'Spicy',
-}
-
 export function ProgressiveSetInput({
   kg,
   reps,
@@ -69,9 +63,20 @@ export function ProgressiveSetInput({
   onStart,
   onFinish,
 }: ProgressiveSetInputProps) {
-  const [uiState, setUIState] = useState<UIState>('quick')
+  const { t } = useTranslation()
+  const kgNum = parseFloat(kg) || 0
+  const repsNum = parseInt(reps) || 0
+  const isEmpty = kgNum === 0 && repsNum === 0
+  const [uiState, setUIState] = useState<UIState>(isEmpty ? 'expanded' : 'quick')
   const [actualKg, setActualKg] = useState(kg)
   const [actualReps, setActualReps] = useState(reps)
+
+  const DIFFICULTY_LABELS: Record<PredictedDifficulty, string> = {
+    warmup: t('setInput.easeIn'),
+    easy: t('setInput.chill'),
+    normal: t('setInput.solid'),
+    hard: t('setInput.spicy'),
+  }
 
   // Sync actual values when planned values change
   useEffect(() => {
@@ -86,8 +91,6 @@ export function ProgressiveSetInput({
     }
   }, [isTimerRunning])
 
-  const kgNum = parseFloat(kg) || 0
-  const repsNum = parseInt(reps) || 0
   const predictedDiff = e1rm ? predictDifficulty(e1rm, kgNum, repsNum) : null
 
   const formatTime = (seconds: number) => {
@@ -161,11 +164,11 @@ export function ProgressiveSetInput({
             </div>
             <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
               {matchesLastSession ? (
-                <span className="text-blue-400">same as last session</span>
+                <span className="text-blue-400">{t('setInput.sameAsLastSession')}</span>
               ) : lastSet ? (
-                <span>last: {lastSet.kg}×{lastSet.reps}</span>
+                <span>{t('setInput.last')}: {lastSet.kg}×{lastSet.reps}</span>
               ) : (
-                <span>Set #{setNumber}</span>
+                <span>{t('setInput.setNumber', { number: setNumber })}</span>
               )}
               {predictedDiff && (
                 <span className={`px-2 py-0.5 rounded text-white text-xs ${DIFFICULTY_COLORS[predictedDiff]}`}>
@@ -182,7 +185,7 @@ export function ProgressiveSetInput({
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              Adjust
+              {t('setInput.adjust')}
             </motion.button>
             <motion.button
               type="button"
@@ -192,7 +195,7 @@ export function ProgressiveSetInput({
               whileTap={{ scale: 0.92 }}
               transition={springs.bouncy}
             >
-              Go
+              {t('setInput.go')}
             </motion.button>
           </div>
         </div>
@@ -207,7 +210,7 @@ export function ProgressiveSetInput({
         {/* Last session pattern */}
         {hasLastSession && (
           <div className="p-3 bg-[var(--bg)] rounded-lg">
-            <div className="text-xs text-[var(--text-muted)] mb-2">Last session:</div>
+            <div className="text-xs text-[var(--text-muted)] mb-2">{t('setInput.lastSession')}</div>
             <div className="flex flex-wrap gap-2">
               {lastSessionSets.map((set, i) => {
                 const isCurrentSetNumber = i === setNumber - 1
@@ -243,7 +246,7 @@ export function ProgressiveSetInput({
         <div className="flex gap-4">
           {/* Weight stepper */}
           <div className="flex-1 p-3 bg-[var(--bg)] rounded-lg">
-            <div className="text-xs text-[var(--text-muted)] mb-2 text-center">Weight</div>
+            <div className="text-xs text-[var(--text-muted)] mb-2 text-center">{t('setInput.weight')}</div>
             <div className="flex items-center justify-center gap-2">
               <button
                 type="button"
@@ -267,12 +270,12 @@ export function ProgressiveSetInput({
                 +5
               </button>
             </div>
-            <div className="text-xs text-[var(--text-muted)] text-center mt-1">kg</div>
+            <div className="text-xs text-[var(--text-muted)] text-center mt-1">{t('setInput.kg')}</div>
           </div>
 
           {/* Reps stepper */}
           <div className="flex-1 p-3 bg-[var(--bg)] rounded-lg">
-            <div className="text-xs text-[var(--text-muted)] mb-2 text-center">Reps</div>
+            <div className="text-xs text-[var(--text-muted)] mb-2 text-center">{t('setInput.reps')}</div>
             <div className="flex items-center justify-center gap-2">
               <button
                 type="button"
@@ -295,7 +298,7 @@ export function ProgressiveSetInput({
                 +1
               </button>
             </div>
-            <div className="text-xs text-[var(--text-muted)] text-center mt-1">reps</div>
+            <div className="text-xs text-[var(--text-muted)] text-center mt-1">{t('setInput.reps')}</div>
           </div>
         </div>
 
@@ -303,7 +306,7 @@ export function ProgressiveSetInput({
         {e1rm && predictedDiff && (
           <div className="p-3 bg-[var(--bg)] rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-[var(--text-muted)]">Intensity</span>
+              <span className="text-xs text-[var(--text-muted)]">{t('setInput.intensity')}</span>
               <span className={`px-2 py-0.5 rounded text-white text-xs ${DIFFICULTY_COLORS[predictedDiff]}`}>
                 {DIFFICULTY_LABELS[predictedDiff]}
               </span>
@@ -317,9 +320,9 @@ export function ProgressiveSetInput({
               />
             </div>
             <div className="flex justify-between text-xs text-[var(--text-muted)] mt-1">
-              <span>Warmup</span>
-              <span>Working</span>
-              <span>Max</span>
+              <span>{t('setInput.warmup')}</span>
+              <span>{t('setInput.working')}</span>
+              <span>{t('setInput.max')}</span>
             </div>
           </div>
         )}
@@ -342,7 +345,7 @@ export function ProgressiveSetInput({
                   }`}
                 >
                   <div className="font-medium">{DIFFICULTY_LABELS[diff]}</div>
-                  <div className="text-xs opacity-75">{presetKg}kg</div>
+                  <div className="text-xs opacity-75">{presetKg}{t('setInput.kg')}</div>
                 </button>
               )
             })}
@@ -351,7 +354,7 @@ export function ProgressiveSetInput({
 
         {/* Rest time */}
         <div className="flex items-center justify-between p-3 bg-[var(--bg)] rounded-lg">
-          <span className="text-sm text-[var(--text-muted)]">Rest time</span>
+          <span className="text-sm text-[var(--text-muted)]">{t('setInput.restTime')}</span>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -381,19 +384,21 @@ export function ProgressiveSetInput({
 
         {/* Action buttons */}
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setUIState('quick')}
-            className="flex-1 py-3 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
-          >
-            Collapse
-          </button>
+          {!isEmpty && (
+            <button
+              type="button"
+              onClick={() => setUIState('quick')}
+              className="flex-1 py-3 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
+            >
+              {t('setInput.collapse')}
+            </button>
+          )}
           <button
             type="button"
             onClick={handleStartSet}
-            className="flex-[2] py-3 bg-[var(--text)] text-[var(--bg)] rounded-lg font-medium"
+            className={`${isEmpty ? 'flex-1' : 'flex-[2]'} py-3 bg-[var(--text)] text-[var(--bg)] rounded-lg font-medium`}
           >
-            Start Set
+            {t('setInput.startSet')}
           </button>
         </div>
       </div>
@@ -407,7 +412,7 @@ export function ProgressiveSetInput({
         <div className="text-center py-6">
           <div className="text-5xl font-mono font-bold">{formatTime(elapsed)}</div>
           <div className="text-lg text-[var(--text-muted)] mt-2">
-            {kgNum}kg × {repsNum}
+            {kgNum}{t('setInput.kg')} × {repsNum}
           </div>
         </div>
         <button
@@ -415,7 +420,7 @@ export function ProgressiveSetInput({
           onClick={handleSetDone}
           className="w-full py-4 bg-[var(--success)] text-white rounded-lg font-medium text-lg"
         >
-          Done
+          {t('setInput.done')}
         </button>
       </div>
     )
@@ -430,14 +435,14 @@ export function ProgressiveSetInput({
     return (
       <div className="space-y-4">
         <div className="text-center py-4">
-          <div className="text-sm text-[var(--text-muted)]">That's a wrap! {formatTime(elapsed)}</div>
+          <div className="text-sm text-[var(--text-muted)]">{t('setInput.thatsAWrap')} {formatTime(elapsed)}</div>
           <div className="text-2xl font-bold mt-2">
-            Log as {actualKgNum}kg × {actualRepsNum}?
+            {t('setInput.logAs', { kg: actualKgNum, reps: actualRepsNum })}
           </div>
         </div>
 
         <div className="text-sm text-[var(--text-muted)] text-center">
-          How'd that feel?
+          {t('setInput.howDidThatFeel')}
         </div>
 
         <div className="flex gap-2">
@@ -446,21 +451,21 @@ export function ProgressiveSetInput({
             onClick={() => handleConfirmWithDifficulty('easy')}
             className="flex-1 py-4 bg-[var(--diff-chill)] text-white rounded-lg font-medium"
           >
-            Chill
+            {t('setInput.chill')}
           </button>
           <button
             type="button"
             onClick={() => handleConfirmWithDifficulty('normal')}
             className="flex-1 py-4 bg-[var(--diff-solid)] text-white rounded-lg font-medium"
           >
-            Solid
+            {t('setInput.solid')}
           </button>
           <button
             type="button"
             onClick={() => handleConfirmWithDifficulty('hard')}
             className="flex-1 py-4 bg-[var(--diff-spicy)] text-white rounded-lg font-medium"
           >
-            Spicy
+            {t('setInput.spicy')}
           </button>
         </div>
 
@@ -469,7 +474,7 @@ export function ProgressiveSetInput({
           onClick={() => setUIState('adjust')}
           className="w-full py-2 text-[var(--text-muted)] hover:text-[var(--text)] text-sm"
         >
-          {matchesPlanned ? 'Actually did different...' : 'Adjust values...'}
+          {matchesPlanned ? t('setInput.actuallyDidDifferent') : t('setInput.adjustValues')}
         </button>
       </div>
     )
@@ -480,7 +485,7 @@ export function ProgressiveSetInput({
     return (
       <div className="space-y-4">
         <div className="text-center text-sm text-[var(--text-muted)]">
-          What did you actually do?
+          {t('setInput.whatDidYouActuallyDo')}
         </div>
 
         <div className="flex gap-4">
@@ -509,7 +514,7 @@ export function ProgressiveSetInput({
                   animate={{ scale: 1 }}
                   transition={springs.bouncy}
                 />
-                <div className="text-xs text-[var(--text-muted)]">kg</div>
+                <div className="text-xs text-[var(--text-muted)]">{t('setInput.kg')}</div>
               </div>
               <motion.button
                 type="button"
@@ -524,7 +529,7 @@ export function ProgressiveSetInput({
             </div>
             {parseFloat(actualKg) !== kgNum && (
               <div className="text-xs text-center text-[var(--text-muted)] mt-1">
-                (planned {kgNum})
+                ({t('setInput.planned')} {kgNum})
               </div>
             )}
           </div>
@@ -553,7 +558,7 @@ export function ProgressiveSetInput({
                   animate={{ scale: 1 }}
                   transition={springs.bouncy}
                 />
-                <div className="text-xs text-[var(--text-muted)]">reps</div>
+                <div className="text-xs text-[var(--text-muted)]">{t('setInput.reps')}</div>
               </div>
               <motion.button
                 type="button"
@@ -568,7 +573,7 @@ export function ProgressiveSetInput({
             </div>
             {parseInt(actualReps) !== repsNum && (
               <div className="text-xs text-center text-[var(--text-muted)] mt-1">
-                (planned {repsNum})
+                ({t('setInput.planned')} {repsNum})
               </div>
             )}
           </div>
@@ -583,7 +588,7 @@ export function ProgressiveSetInput({
             whileTap={{ scale: 0.92 }}
             transition={springs.bouncy}
           >
-            Chill
+            {t('setInput.chill')}
           </motion.button>
           <motion.button
             type="button"
@@ -593,7 +598,7 @@ export function ProgressiveSetInput({
             whileTap={{ scale: 0.92 }}
             transition={springs.bouncy}
           >
-            Solid
+            {t('setInput.solid')}
           </motion.button>
           <motion.button
             type="button"
@@ -603,7 +608,7 @@ export function ProgressiveSetInput({
             whileTap={{ scale: 0.92 }}
             transition={springs.bouncy}
           >
-            Spicy
+            {t('setInput.spicy')}
           </motion.button>
         </div>
 
@@ -612,7 +617,7 @@ export function ProgressiveSetInput({
           onClick={() => setUIState('confirm')}
           className="w-full py-2 text-[var(--text-muted)] hover:text-[var(--text)] text-sm"
         >
-          Back
+          {t('setInput.back')}
         </button>
       </div>
     )

@@ -349,7 +349,7 @@ export function ExerciseRow({
             >
               <polyline points="9 18 15 12 9 6" />
             </svg>
-            How to perform ({exercise.instructions.length} steps)
+            {t('exercise.howToPerform')} ({t('exercise.steps', { count: exercise.instructions.length })})
           </summary>
           <ol className="px-3 pb-3 space-y-2">
             {exercise.instructions.map((step, i) => (
@@ -382,7 +382,7 @@ export function ExerciseRow({
               >
                 <polyline points="9 18 15 12 9 6" />
               </svg>
-              Strength metrics
+              {t('exercise.strengthMetrics')}
             </span>
             <span className="font-medium">{e1rmMetrics.current}kg e1RM</span>
           </summary>
