@@ -6,6 +6,69 @@ const EXERCISES_URL_EN = 'https://raw.githubusercontent.com/yuhonas/free-exercis
 const EXERCISES_URL_PT_BR = `${import.meta.env.BASE_URL}data/exercises-pt-br.json`
 const IMAGE_BASE_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'
 
+// Translation maps for Portuguese search terms
+const muscleTranslations: Record<string, string> = {
+  'abdominals': 'Abdominais',
+  'abductors': 'Abdutores',
+  'adductors': 'Adutores',
+  'biceps': 'Bíceps',
+  'calves': 'Panturrilhas',
+  'chest': 'Peito',
+  'forearms': 'Antebraços',
+  'glutes': 'Glúteos',
+  'hamstrings': 'Posteriores de Coxa',
+  'lats': 'Dorsais',
+  'lower back': 'Lombar',
+  'middle back': 'Costas Médias',
+  'neck': 'Pescoço',
+  'quadriceps': 'Quadríceps',
+  'shoulders': 'Ombros',
+  'traps': 'Trapézios',
+  'triceps': 'Tríceps',
+}
+
+const equipmentTranslations: Record<string, string> = {
+  'bands': 'Faixas Elásticas',
+  'barbell': 'Barra',
+  'body only': 'Peso Corporal',
+  'cable': 'Cabo',
+  'dumbbell': 'Halter',
+  'e-z curl bar': 'Barra W',
+  'exercise ball': 'Bola de Exercício',
+  'foam roll': 'Rolo de Espuma',
+  'kettlebells': 'Kettlebells',
+  'machine': 'Máquina',
+  'medicine ball': 'Bola Medicinal',
+  'other': 'Outro',
+}
+
+const categoryTranslations: Record<string, string> = {
+  'cardio': 'Cardio',
+  'olympic weightlifting': 'Levantamento Olímpico',
+  'plyometrics': 'Pliometria',
+  'powerlifting': 'Powerlifting',
+  'strength': 'Força',
+  'stretching': 'Alongamento',
+  'strongman': 'Strongman',
+}
+
+const forceTranslations: Record<string, string> = {
+  'pull': 'Puxar',
+  'push': 'Empurrar',
+  'static': 'Estático',
+}
+
+const mechanicTranslations: Record<string, string> = {
+  'compound': 'Composto',
+  'isolation': 'Isolamento',
+}
+
+const levelTranslations: Record<string, string> = {
+  'beginner': 'Iniciante',
+  'intermediate': 'Intermediário',
+  'expert': 'Avançado',
+}
+
 function getExercisesUrl(): string {
   const lang = i18n.language
   if (lang === 'pt-BR' || lang === 'pt') {
@@ -111,6 +174,9 @@ export interface Exercise {
   level: string
   force: string | null
   mechanic: string | null
+  // Search fields for multi-language support
+  nameEn?: string
+  searchTerms?: string[] // Combined search terms in all languages
 }
 
 interface RawExercise {
@@ -137,9 +203,72 @@ export interface SearchFilters {
   muscle?: string
 }
 
+// Build search terms array including both English and translated terms
+function buildSearchTerms(exercise: Exercise, nameEn?: string): string[] {
+  const terms: string[] = []
+
+  // Add exercise names
+  terms.push(exercise.name)
+  if (nameEn && nameEn !== exercise.name) {
+    terms.push(nameEn)
+  }
+
+  // Add muscles (English + translated)
+  for (const muscle of exercise.targetMuscles) {
+    terms.push(muscle)
+    if (muscleTranslations[muscle]) {
+      terms.push(muscleTranslations[muscle])
+    }
+  }
+  for (const muscle of exercise.secondaryMuscles) {
+    terms.push(muscle)
+    if (muscleTranslations[muscle]) {
+      terms.push(muscleTranslations[muscle])
+    }
+  }
+
+  // Add equipment (English + translated)
+  if (exercise.equipment) {
+    terms.push(exercise.equipment)
+    if (equipmentTranslations[exercise.equipment]) {
+      terms.push(equipmentTranslations[exercise.equipment])
+    }
+  }
+
+  // Add category (English + translated)
+  terms.push(exercise.category)
+  if (categoryTranslations[exercise.category]) {
+    terms.push(categoryTranslations[exercise.category])
+  }
+
+  // Add force (English + translated)
+  if (exercise.force) {
+    terms.push(exercise.force)
+    if (forceTranslations[exercise.force]) {
+      terms.push(forceTranslations[exercise.force])
+    }
+  }
+
+  // Add mechanic (English + translated)
+  if (exercise.mechanic) {
+    terms.push(exercise.mechanic)
+    if (mechanicTranslations[exercise.mechanic]) {
+      terms.push(mechanicTranslations[exercise.mechanic])
+    }
+  }
+
+  // Add level (English + translated)
+  terms.push(exercise.level)
+  if (levelTranslations[exercise.level]) {
+    terms.push(levelTranslations[exercise.level])
+  }
+
+  return terms
+}
+
 // Convert raw exercise to our format
-function mapExercise(raw: RawExercise): Exercise {
-  return {
+function mapExercise(raw: RawExercise, nameEn?: string): Exercise {
+  const exercise: Exercise = {
     exerciseId: raw.id,
     name: raw.name,
     equipment: raw.equipment,
@@ -151,7 +280,10 @@ function mapExercise(raw: RawExercise): Exercise {
     level: raw.level,
     force: raw.force,
     mechanic: raw.mechanic,
+    nameEn: nameEn,
   }
+  exercise.searchTerms = buildSearchTerms(exercise, nameEn)
+  return exercise
 }
 
 // Load exercise cache from localStorage
@@ -213,6 +345,8 @@ const dbLoadCallbacks: (() => void)[] = []
 const fuseOptions: IFuseOptions<Exercise> = {
   keys: [
     { name: 'name', weight: 2 },
+    { name: 'nameEn', weight: 2 },
+    { name: 'searchTerms', weight: 1.5 },
     { name: 'targetMuscles', weight: 1.5 },
     { name: 'secondaryMuscles', weight: 1 },
     { name: 'equipment', weight: 1 },
@@ -288,11 +422,33 @@ async function loadExerciseDB(): Promise<Exercise[]> {
 
   try {
     const exercisesUrl = getExercisesUrl()
+    const isNonEnglish = exercisesUrl !== EXERCISES_URL_EN
+
+    // Fetch exercises for current language
     const response = await fetch(exercisesUrl)
     if (!response.ok) throw new Error('Failed to load exercise database')
-
     const rawData: RawExercise[] = await response.json()
-    allExercises = rawData.map(mapExercise)
+
+    // If non-English, also fetch English data for English names
+    let englishNamesMap: Map<string, string> | null = null
+    if (isNonEnglish) {
+      try {
+        const enResponse = await fetch(EXERCISES_URL_EN)
+        if (enResponse.ok) {
+          const enRawData: RawExercise[] = await enResponse.json()
+          englishNamesMap = new Map(enRawData.map(ex => [ex.id, ex.name]))
+        }
+      } catch {
+        // English data fetch failed, continue without it
+        console.warn('Failed to load English exercise names for search')
+      }
+    }
+
+    // Map exercises with English names when available
+    allExercises = rawData.map(raw => {
+      const nameEn = englishNamesMap?.get(raw.id)
+      return mapExercise(raw, nameEn)
+    })
 
     // Cache all exercises
     if (exerciseCache) {
