@@ -16,7 +16,6 @@ import {
   E1rmDisplay,
   ProgressiveSetInput,
 } from "./shared";
-import { springs } from "../lib/animations";
 
 interface Exercise {
   exerciseId: string;
@@ -154,11 +153,7 @@ export function ExerciseRow({
   // Collapsed view
   if (!isSelected) {
     return (
-      <motion.div
-        layout
-        className={`rounded-lg ${isNextExercise ? "bg-blue-500/5" : ""}`}
-        transition={springs.snappy}
-      >
+      <div className={`rounded-lg ${isNextExercise ? "bg-blue-500/5" : ""}`}>
         <div className="flex items-center gap-2 p-3 cursor-pointer" onClick={onClick}>
           {isNextExercise && <span className="text-lg text-blue-500">→</span>}
 
@@ -219,19 +214,13 @@ export function ExerciseRow({
             </motion.button>
           )}
         </div>
-      </motion.div>
+      </div>
     );
   }
 
   // Expanded view - using ProgressiveSetInput for both active and inactive states
   return (
-    <motion.div
-      layout
-      className="bg-[var(--surface)] rounded-lg p-4 space-y-4"
-      initial={{ opacity: 0.8 }}
-      animate={{ opacity: 1 }}
-      transition={springs.snappy}
-    >
+    <div className="bg-[var(--surface)] rounded-lg p-4 space-y-4">
       {showFullImage && imageUrls.length > 0 && (
         <motion.div
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
@@ -357,6 +346,6 @@ export function ExerciseRow({
         onStart={handleStart}
         onFinish={handleFinish}
       />
-    </motion.div>
+    </div>
   );
 }
