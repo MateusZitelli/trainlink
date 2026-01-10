@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import type { SearchFilters } from '../hooks/useExerciseDB'
 import { getFilterOptions } from '../hooks/useExerciseDB'
 
@@ -48,6 +49,7 @@ function FilterSection({
 }
 
 export function FilterPanel({ filters, onChange, resultCount }: FilterPanelProps) {
+  const { t } = useTranslation()
   const options = getFilterOptions()
 
   const handleToggle = (key: keyof SearchFilters, value: string) => {
@@ -71,10 +73,9 @@ export function FilterPanel({ filters, onChange, resultCount }: FilterPanelProps
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="text-sm">
-          <span className="font-medium">{resultCount}</span>
-          <span className="text-[var(--text-muted)]"> exercises</span>
+          <span className="font-medium">{t('filters.exercises', { count: resultCount })}</span>
           {activeCount > 0 && (
-            <span className="text-[var(--text-muted)]"> ({activeCount} filters)</span>
+            <span className="text-[var(--text-muted)]"> ({activeCount})</span>
           )}
         </div>
         {activeCount > 0 && (
@@ -82,14 +83,14 @@ export function FilterPanel({ filters, onChange, resultCount }: FilterPanelProps
             onClick={handleReset}
             className="text-xs text-[var(--text-muted)] hover:text-[var(--text)]"
           >
-            Clear filters
+            {t('filters.clearFilters')}
           </button>
         )}
       </div>
 
       {/* Level */}
       {options.levels.length > 0 && (
-        <FilterSection title="Level">
+        <FilterSection title={t('filters.level')}>
           {options.levels.map(level => (
             <FilterChip
               key={level}
@@ -103,7 +104,7 @@ export function FilterPanel({ filters, onChange, resultCount }: FilterPanelProps
 
       {/* Category */}
       {options.categories.length > 0 && (
-        <FilterSection title="Category">
+        <FilterSection title={t('filters.category')}>
           {options.categories.map(cat => (
             <FilterChip
               key={cat}
@@ -119,7 +120,7 @@ export function FilterPanel({ filters, onChange, resultCount }: FilterPanelProps
       {(options.forces.length > 0 || options.mechanics.length > 0) && (
         <div className="grid grid-cols-2 gap-4">
           {options.forces.length > 0 && (
-            <FilterSection title="Force">
+            <FilterSection title={t('filters.force')}>
               {options.forces.map(force => (
                 <FilterChip
                   key={force}
@@ -132,7 +133,7 @@ export function FilterPanel({ filters, onChange, resultCount }: FilterPanelProps
           )}
 
           {options.mechanics.length > 0 && (
-            <FilterSection title="Type">
+            <FilterSection title={t('filters.type')}>
               {options.mechanics.map(mech => (
                 <FilterChip
                   key={mech}
@@ -148,7 +149,7 @@ export function FilterPanel({ filters, onChange, resultCount }: FilterPanelProps
 
       {/* Equipment */}
       {options.equipment.length > 0 && (
-        <FilterSection title="Equipment">
+        <FilterSection title={t('filters.equipment')}>
           {options.equipment.map(eq => (
             <FilterChip
               key={eq}
@@ -162,7 +163,7 @@ export function FilterPanel({ filters, onChange, resultCount }: FilterPanelProps
 
       {/* Muscles */}
       {options.muscles.length > 0 && (
-        <FilterSection title="Muscle">
+        <FilterSection title={t('filters.muscle')}>
           {options.muscles.map(muscle => (
             <FilterChip
               key={muscle}

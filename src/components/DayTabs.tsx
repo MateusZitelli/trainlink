@@ -1,5 +1,7 @@
 import type { Day } from '../lib/state'
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import { LanguageSwitcher } from './LanguageSwitcher'
 
 interface DayTabsProps {
   days: Day[]
@@ -26,6 +28,7 @@ export function DayTabs({
   onToggleSearch,
   onClearStorage,
 }: DayTabsProps) {
+  const { t } = useTranslation()
   const [contextMenu, setContextMenu] = useState<{ name: string; x: number; y: number } | null>(null)
   const [editingDay, setEditingDay] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
@@ -60,7 +63,7 @@ export function DayTabs({
   }
 
   const handleDelete = (name: string) => {
-    if (confirm(`Delete "${name}"?`)) {
+    if (confirm(t('dayTabs.deleteConfirm', { name }))) {
       onDeleteDay(name)
     }
     setContextMenu(null)
@@ -209,6 +212,9 @@ export function DayTabs({
             onClick={() => setShowSettings(false)}
           />
           <div className="absolute right-4 top-12 bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-lg z-50 min-w-[180px]">
+            <div className="px-4 py-3 border-b border-[var(--border)]">
+              <LanguageSwitcher />
+            </div>
             <button
               onClick={() => {
                 onClearStorage()
@@ -220,7 +226,7 @@ export function DayTabs({
                 <polyline points="3 6 5 6 21 6" />
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
               </svg>
-              Clear All Data
+              {t('dayTabs.clearAllData')}
             </button>
           </div>
         </>
@@ -249,7 +255,7 @@ export function DayTabs({
                       }}
                       className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg)]"
                     >
-                      ← Move Left
+                      {t('dayTabs.moveLeft')}
                     </button>
                   )}
                   {index < days.length - 1 && (
@@ -260,20 +266,20 @@ export function DayTabs({
                       }}
                       className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg)]"
                     >
-                      Move Right →
+                      {t('dayTabs.moveRight')}
                     </button>
                   )}
                   <button
                     onClick={() => handleStartRename(contextMenu.name)}
                     className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg)]"
                   >
-                    Rename
+                    {t('dayTabs.rename')}
                   </button>
                   <button
                     onClick={() => handleDelete(contextMenu.name)}
                     className="w-full px-4 py-3 text-left text-sm text-red-500 hover:bg-[var(--bg)]"
                   >
-                    Delete
+                    {t('dayTabs.delete')}
                   </button>
                 </>
               )

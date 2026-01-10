@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   DragDropContext,
   Droppable,
@@ -170,6 +171,7 @@ export function SessionLog({
   onShareSession,
   urlCutoffTs,
 }: SessionLogProps) {
+  const { t } = useTranslation()
   const [selectedTs, setSelectedTs] = useState<number | null>(null)
   const [editingTs, setEditingTs] = useState<number | null>(null)
   const [editValues, setEditValues] = useState({ kg: '', reps: '', rest: '' })
@@ -430,24 +432,24 @@ export function SessionLog({
         <span className="text-sm text-[var(--text-muted)]">s rest</span>
       </div>
       <div className="flex items-center gap-2">
-        <span className="text-xs text-[var(--text-muted)] mr-1">Difficulty:</span>
+        <span className="text-xs text-[var(--text-muted)] mr-1">{t('common:difficulty.easy')}:</span>
         <button
           onClick={() => handleSave(set.ts, 'easy')}
           className="px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-500/30 transition-colors"
         >
-          Easy
+          {t('common:difficulty.easy')}
         </button>
         <button
           onClick={() => handleSave(set.ts, 'normal')}
           className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-xs font-medium hover:bg-green-500/30 transition-colors"
         >
-          Normal
+          {t('common:difficulty.normal')}
         </button>
         <button
           onClick={() => handleSave(set.ts, 'hard')}
           className="px-3 py-1.5 bg-orange-500/20 text-orange-400 rounded-lg text-xs font-medium hover:bg-orange-500/30 transition-colors"
         >
-          Hard
+          {t('common:difficulty.hard')}
         </button>
       </div>
       <div className="flex items-center gap-2 pt-2 border-t border-[var(--border)]">
@@ -455,13 +457,13 @@ export function SessionLog({
           onClick={() => handleSave(set.ts)}
           className="flex-1 px-4 py-2 bg-[var(--success)] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
         >
-          Save
+          {t('common:buttons.save')}
         </button>
         <button
           onClick={handleCancel}
           className="px-4 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm hover:bg-[var(--surface)] transition-colors"
         >
-          Cancel
+          {t('common:buttons.cancel')}
         </button>
       </div>
     </div>
@@ -638,14 +640,14 @@ export function SessionLog({
               <span className="text-[var(--text-muted)]">·</span>
               <span className="text-sm text-[var(--text-muted)]">{formatTimeOfDay(session.startTs)}</span>
               {isActive && (
-                <span className="text-xs bg-[var(--success)] text-white px-1.5 py-0.5 rounded">Active</span>
+                <span className="text-xs bg-[var(--success)] text-white px-1.5 py-0.5 rounded">{t('session.active')}</span>
               )}
               {!isActive && !isShareable(session) && (
-                <span className="text-xs bg-[var(--surface)] text-[var(--text-muted)] px-1.5 py-0.5 rounded">Local</span>
+                <span className="text-xs bg-[var(--surface)] text-[var(--text-muted)] px-1.5 py-0.5 rounded">{t('session.local')}</span>
               )}
             </div>
             <div className="text-sm text-[var(--text-muted)]">
-              {uniqueExercises} exercise{uniqueExercises !== 1 ? 's' : ''} · {totalSets} set{totalSets !== 1 ? 's' : ''} · {Math.round(totalVolume).toLocaleString()}kg · {formatDuration(session.startTs, session.endTs)}
+              {t('session.exercises', { count: uniqueExercises })} · {t('session.sets', { count: totalSets })} · {t('session.totalVolume', { amount: Math.round(totalVolume).toLocaleString() })} · {formatDuration(session.startTs, session.endTs)}
             </div>
           </div>
 
@@ -655,7 +657,7 @@ export function SessionLog({
                 onClick={onEndSession}
                 className="px-3 py-1.5 text-sm bg-[var(--success)] text-white rounded-lg"
               >
-                Finish Day
+                {t('session.finishDay')}
               </button>
             ) : (
               <>
@@ -668,7 +670,7 @@ export function SessionLog({
                         ? 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--border)]'
                         : 'text-[var(--text-muted)] opacity-50 cursor-not-allowed'
                     }`}
-                    title={isShareable(session) ? 'Share session' : 'Session stored locally only'}
+                    title={isShareable(session) ? t('session.shareSession') : t('session.localOnly')}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
@@ -682,7 +684,7 @@ export function SessionLog({
                     onClick={onResumeSession}
                     className="px-3 py-1.5 text-sm bg-[var(--surface)] rounded-lg hover:bg-[var(--border)]"
                   >
-                    Resume Day
+                    {t('session.resumeDay')}
                   </button>
                 ) : (
                   <button
@@ -693,7 +695,7 @@ export function SessionLog({
                       <polyline points="3 6 5 6 21 6" />
                       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                     </svg>
-                    Delete
+                    {t('session.deleteSession')}
                   </button>
                 )}
               </>
@@ -723,9 +725,9 @@ export function SessionLog({
         >
           <span className="text-lg text-[var(--text-muted)]">{isListCollapsed ? '▶' : '▼'}</span>
           <div>
-            <div className="font-medium">Sessions</div>
+            <div className="font-medium">{t('session.sessions')}</div>
             <div className="text-sm text-[var(--text-muted)]">
-              {sessions.length} day{sessions.length !== 1 ? 's' : ''} · {totalSets} set{totalSets !== 1 ? 's' : ''} · {Math.round(totalVolume).toLocaleString()}kg total
+              {t('session.days', { count: sessions.length })} · {t('session.sets', { count: totalSets })} · {t('session.totalKg', { amount: Math.round(totalVolume).toLocaleString() })}
             </div>
           </div>
         </div>

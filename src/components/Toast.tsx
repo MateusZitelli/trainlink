@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 interface ToastProps {
   message: string
   onUndo: () => void
@@ -5,6 +7,8 @@ interface ToastProps {
 }
 
 export function Toast({ message, onUndo, onDismiss }: ToastProps) {
+  const { t } = useTranslation()
+
   return (
     <div
       className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 animate-slide-up"
@@ -16,12 +20,12 @@ export function Toast({ message, onUndo, onDismiss }: ToastProps) {
           onClick={onUndo}
           className="text-sm font-medium text-blue-500 hover:text-blue-400"
         >
-          Undo
+          {t('common:buttons.undo')}
         </button>
         <button
           onClick={onDismiss}
           className="text-[var(--text-muted)] hover:text-[var(--text)]"
-          aria-label="Dismiss"
+          aria-label={t('toast.dismiss')}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

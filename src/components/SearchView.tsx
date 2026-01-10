@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { Exercise, SearchFilters } from '../hooks/useExerciseDB'
 import { useExerciseDB, debounce } from '../hooks/useExerciseDB'
 import type { Day } from '../lib/state'
@@ -20,6 +21,7 @@ export function SearchView({
   onAddToDay,
   onDoNow,
 }: SearchViewProps) {
+  const { t } = useTranslation()
   const [filters, setFilters] = useState<SearchFilters>({})
   const [showFilters, setShowFilters] = useState(false)
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null)
@@ -68,7 +70,7 @@ export function SearchView({
               type="text"
               value={filters.query ?? ''}
               onChange={(e) => handleQueryChange(e.target.value)}
-              placeholder="Search exercises..."
+              placeholder={t('search.placeholder')}
               autoFocus
               className="w-full px-4 py-3 bg-[var(--surface)] border border-[var(--border)] rounded-lg pl-10"
             />
@@ -135,14 +137,14 @@ export function SearchView({
           {/* Loading */}
           {!dbReady && (
             <div className="text-center py-8 text-[var(--text-muted)]">
-              Loading exercise database...
+              {t('search.loading')}
             </div>
           )}
 
           {/* Loading search */}
           {dbReady && loading && (
             <div className="text-center py-8 text-[var(--text-muted)]">
-              Searching...
+              {t('search.searching')}
             </div>
           )}
 
@@ -166,19 +168,19 @@ export function SearchView({
           {/* Empty state */}
           {dbReady && !loading && (filters.query || hasActiveFilters) && results.length === 0 && (
             <div className="text-center py-8 text-[var(--text-muted)]">
-              No exercises found
+              {t('search.noResults')}
             </div>
           )}
 
           {/* Initial state */}
           {dbReady && !loading && !filters.query && !hasActiveFilters && (
             <div className="text-center py-8 text-[var(--text-muted)]">
-              <p>Search or filter to find exercises</p>
+              <p>{t('search.initialHint')}</p>
               <button
                 onClick={() => setShowFilters(true)}
                 className="mt-2 text-blue-400 hover:underline"
               >
-                Open filters to browse
+                {t('search.openFilters')}
               </button>
             </div>
           )}
@@ -217,6 +219,7 @@ function SearchResultCard({
   onDoNow,
   activeDay,
 }: SearchResultCardProps) {
+  const { t } = useTranslation()
   const imageIndex = useImageRotation(exercise.imageUrls)
 
   const forceIcons: Record<string, string> = {
@@ -321,7 +324,7 @@ function SearchResultCard({
               }}
               className="flex-1 px-2 py-1.5 text-[11px] font-medium bg-blue-500 text-white rounded hover:bg-blue-600 active:scale-95 transition-transform"
             >
-              + Add
+              {t('search.addButton')}
             </button>
           )}
           <button
@@ -331,7 +334,7 @@ function SearchResultCard({
             }}
             className="flex-1 px-2 py-1.5 text-[11px] font-medium bg-green-500 text-white rounded hover:bg-green-600 active:scale-95 transition-transform"
           >
-            ▶ Do Now
+            {t('search.doNowButton')}
           </button>
         </div>
       </div>

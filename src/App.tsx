@@ -13,9 +13,11 @@ import { useUndoableDelete } from './hooks/useUndoableDelete'
 import { isSetEntry } from './lib/state'
 import { parseSessionShareFromUrl, clearStorage, generateSessionShareUrl, loadMetadata, type ShareSessionData } from './lib/url'
 import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import './index.css'
 
 function App() {
+  const { t } = useTranslation()
   const { state, actions } = useAppState()
   const [showSearch, setShowSearch] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -125,12 +127,12 @@ function App() {
     )
 
     navigator.clipboard.writeText(shareUrl)
-    alert('Share link copied to clipboard!')
+    alert(t('app.shareSuccess'))
   }, [state.session?.activeDay, findPreviousSession])
 
   // Handle clear storage
   const handleClearStorage = () => {
-    if (confirm('Clear all saved data? This will reset the app to its initial state.')) {
+    if (confirm(t('app.clearConfirm'))) {
       clearStorage()
       window.location.hash = ''
       window.location.reload()
@@ -157,7 +159,7 @@ function App() {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-[var(--bg)]">
         <div className="text-5xl mb-4">💪</div>
-        <div className="text-xl font-bold mb-2">TrainLink</div>
+        <div className="text-xl font-bold mb-2">{t('app.name')}</div>
         <div className="w-8 h-8 border-2 border-[var(--border)] border-t-[var(--text)] rounded-full animate-spin" />
       </div>
     )
@@ -253,15 +255,15 @@ function App() {
           return (
             <div className="flex flex-col items-center justify-center h-full text-center p-8">
               <div className="text-6xl mb-4">💪</div>
-              <h2 className="text-xl font-bold mb-2">Welcome to TrainLink</h2>
+              <h2 className="text-xl font-bold mb-2">{t('welcome.title')}</h2>
               <p className="text-[var(--text-muted)] mb-6">
-                Create your first training day to get started
+                {t('welcome.subtitle')}
               </p>
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="px-6 py-3 bg-[var(--text)] text-[var(--bg)] rounded-lg font-medium"
               >
-                + Add Training Day
+                {t('welcome.addDayButton')}
               </button>
             </div>
           )

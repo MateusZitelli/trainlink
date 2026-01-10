@@ -3,6 +3,7 @@ import { getSetsForExerciseToday, getDefaultRest, predictNextExercise, predictEx
 import { ExerciseRow } from './ExerciseRow'
 import { useExerciseDB } from '../hooks/useExerciseDB'
 import { useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   DragDropContext,
   Droppable,
@@ -40,6 +41,7 @@ export function ExerciseList({
   onSetRestTime,
   onClearRest,
 }: ExerciseListProps) {
+  const { t } = useTranslation()
   const { getExercise } = useExerciseDB()
 
   // Get current session sets (for unplanned exercises list)
@@ -78,7 +80,7 @@ export function ExerciseList({
   return (
     <div className="px-4 pb-4 space-y-2">
       <h2 className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-3">
-        Plan — {day.name}
+        {t('exercise.plan')} — {day.name}
       </h2>
 
       <DragDropContext onDragEnd={handleDragEnd}>
@@ -143,14 +145,14 @@ export function ExerciseList({
         onClick={onAddExercise}
         className="w-full py-3 text-sm text-[var(--text-muted)] hover:text-[var(--text)] border border-dashed border-[var(--border)] rounded-lg"
       >
-        + Add exercise
+        {t('exercise.addExercise')}
       </button>
 
       {/* Unplanned exercises (done or currently selected) */}
       {unplannedExercises.length > 0 && (
         <>
           <h2 className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-3 mt-6">
-            Other exercises
+            {t('exercise.otherExercises')}
           </h2>
 
           {unplannedExercises.map((exId) => {

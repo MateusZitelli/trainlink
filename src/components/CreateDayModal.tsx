@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { dayTemplates, packs, DIFFICULTY_COLORS, DIFFICULTY_LABELS } from '../lib/templates'
+import { useTranslation } from 'react-i18next'
+import { dayTemplates, packs, DIFFICULTY_COLORS } from '../lib/templates'
 import type { DayDifficulty, DayTemplate, Pack } from '../lib/templates'
 import type { Exercise } from '../hooks/useExerciseDB'
 
@@ -15,10 +16,11 @@ interface CreateDayModalProps {
 type Tab = 'days' | 'packs'
 
 function DifficultyBadge({ difficulty }: { difficulty: DayDifficulty }) {
+  const { t } = useTranslation('common')
   const colors = DIFFICULTY_COLORS[difficulty]
   return (
     <span className={`px-2 py-0.5 rounded text-xs font-medium ${colors.bg} text-white`}>
-      {DIFFICULTY_LABELS[difficulty]}
+      {t(`dayDifficulty.${difficulty}`)}
     </span>
   )
 }
@@ -32,6 +34,7 @@ function DayTemplateCard({
   exercises: Exercise[]
   onSelect: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <button
       onClick={onSelect}
@@ -45,7 +48,7 @@ function DayTemplateCard({
       <div className="flex items-center justify-between">
         <ExerciseImageStack exercises={exercises} max={5} />
         <span className="text-xs text-[var(--text-muted)]">
-          {template.exerciseNames.length} exercises
+          {t('createDay.exercises', { count: template.exerciseNames.length })}
         </span>
       </div>
     </button>
@@ -61,6 +64,7 @@ function PackCard({
   exercises: Exercise[]
   onSelect: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <button
       onClick={onSelect}
@@ -76,7 +80,7 @@ function PackCard({
         <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
           <span>{pack.frequency}</span>
           <span>•</span>
-          <span>{pack.days.length} days</span>
+          <span>{t('createDay.days', { count: pack.days.length })}</span>
         </div>
       </div>
     </button>
@@ -141,6 +145,7 @@ export function CreateDayModal({
   allExercises,
   existingDayNames,
 }: CreateDayModalProps) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<Tab>('days')
   const [difficultyFilter, setDifficultyFilter] = useState<DayDifficulty | 'all'>('all')
   const [blankDayName, setBlankDayName] = useState('')
@@ -238,7 +243,7 @@ export function CreateDayModal({
                 onClick={() => setSelectedPack(null)}
                 className="text-[var(--text-muted)] hover:text-[var(--text)]"
               >
-                ← Back
+                {t('common:buttons.back')}
               </button>
               <button
                 onClick={onClose}
@@ -260,14 +265,14 @@ export function CreateDayModal({
               <div className="flex items-center gap-3 mt-2 text-sm text-[var(--text-muted)]">
                 <span>{selectedPack.frequency}</span>
                 <span>•</span>
-                <span>{selectedPack.days.length} days</span>
+                <span>{t('createDay.days', { count: selectedPack.days.length })}</span>
               </div>
             </div>
 
             {/* Days preview */}
             <div>
               <h3 className="text-sm font-medium text-[var(--text-muted)] uppercase tracking-wide mb-3">
-                Training Days
+                {t('createDay.trainingDays')}
               </h3>
               <div className="space-y-3">
                 {selectedPack.days.map((day, i) => {
@@ -288,7 +293,7 @@ export function CreateDayModal({
                         ))}
                         {day.exerciseNames.length > 4 && (
                           <div className="text-xs text-[var(--text-muted)] pl-10">
-                            +{day.exerciseNames.length - 4} more exercises
+                            {t('createDay.moreExercises', { count: day.exerciseNames.length - 4 })}
                           </div>
                         )}
                       </div>
@@ -303,7 +308,7 @@ export function CreateDayModal({
               onClick={handleConfirmPack}
               className="w-full py-3 bg-[var(--text)] text-[var(--bg)] rounded-lg font-medium"
             >
-              Add {selectedPack.days.length} Days
+              {t('createDay.addDays', { count: selectedPack.days.length })}
             </button>
           </div>
         </div>
@@ -323,7 +328,7 @@ export function CreateDayModal({
         {/* Header */}
         <div className="border-b border-[var(--border)] p-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold">Create Training Day</h2>
+            <h2 className="text-lg font-bold">{t('createDay.title')}</h2>
             <button
               onClick={onClose}
               className="w-8 h-8 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -342,7 +347,7 @@ export function CreateDayModal({
                   : 'text-[var(--text-muted)]'
               }`}
             >
-              Single Day
+              {t('createDay.singleDay')}
             </button>
             <button
               onClick={() => setActiveTab('packs')}
@@ -352,7 +357,7 @@ export function CreateDayModal({
                   : 'text-[var(--text-muted)]'
               }`}
             >
-              Packs ({packs.length})
+              {t('createDay.packs', { count: packs.length })}
             </button>
           </div>
         </div>
@@ -360,7 +365,7 @@ export function CreateDayModal({
         {/* Difficulty filter */}
         <div className="px-4 py-3 border-b border-[var(--border)]">
           <div className="flex items-center gap-2 overflow-x-auto">
-            <span className="text-xs text-[var(--text-muted)] shrink-0">Filter:</span>
+            <span className="text-xs text-[var(--text-muted)] shrink-0">{t('createDay.filter')}</span>
             <button
               onClick={() => setDifficultyFilter('all')}
               className={`px-3 py-1 text-xs rounded-full transition-colors ${
@@ -369,7 +374,7 @@ export function CreateDayModal({
                   : 'bg-[var(--surface)] text-[var(--text-muted)]'
               }`}
             >
-              All
+              {t('createDay.all')}
             </button>
             {(['beginner', 'intermediate', 'advanced'] as const).map(level => (
               <button
@@ -381,7 +386,7 @@ export function CreateDayModal({
                     : 'bg-[var(--surface)] text-[var(--text-muted)]'
                 }`}
               >
-                {DIFFICULTY_LABELS[level]}
+                {t(`common:dayDifficulty.${level}`)}
               </button>
             ))}
           </div>
@@ -393,7 +398,7 @@ export function CreateDayModal({
             /* Templates */
             <div className="space-y-3">
               <h3 className="text-sm font-medium text-[var(--text-muted)] uppercase tracking-wide">
-                Suggested Days
+                {t('createDay.suggestedDays')}
               </h3>
               <div className="grid grid-cols-1 gap-3">
                 {filteredTemplates.map(template => (
@@ -435,7 +440,7 @@ export function CreateDayModal({
               onKeyDown={e => {
                 if (e.key === 'Enter') handleAddBlankDay()
               }}
-              placeholder="Or create blank day..."
+              placeholder={t('createDay.blankDayPlaceholder')}
               className="flex-1 px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-sm"
             />
             <button
@@ -443,7 +448,7 @@ export function CreateDayModal({
               disabled={!blankDayName.trim()}
               className="px-4 py-2 bg-[var(--text)] text-[var(--bg)] rounded-lg text-sm font-medium disabled:opacity-50"
             >
-              Create
+              {t('common:buttons.create')}
             </button>
           </div>
         </div>

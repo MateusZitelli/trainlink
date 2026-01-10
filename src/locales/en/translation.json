@@ -1,0 +1,96 @@
+{
+  "app": {
+    "name": "TrainLink",
+    "shareSuccess": "Share link copied to clipboard!",
+    "clearConfirm": "Clear all saved data? This will reset the app to its initial state."
+  },
+  "welcome": {
+    "title": "Welcome to TrainLink",
+    "subtitle": "Create your first training day to get started",
+    "addDayButton": "+ Add Training Day"
+  },
+  "dayTabs": {
+    "moveLeft": "← Move Left",
+    "moveRight": "Move Right →",
+    "rename": "Rename",
+    "delete": "Delete",
+    "deleteConfirm": "Delete \"{{name}}\"?",
+    "clearAllData": "Clear All Data"
+  },
+  "search": {
+    "placeholder": "Search exercises...",
+    "loading": "Loading exercise database...",
+    "searching": "Searching...",
+    "noResults": "No exercises found",
+    "initialHint": "Search or filter to find exercises",
+    "openFilters": "Open filters to browse",
+    "addButton": "+ Add",
+    "doNowButton": "▶ Do Now"
+  },
+  "filters": {
+    "exercises_one": "{{count}} exercise",
+    "exercises_other": "{{count}} exercises",
+    "clearFilters": "Clear filters",
+    "level": "Level",
+    "category": "Category",
+    "force": "Force",
+    "type": "Type",
+    "equipment": "Equipment",
+    "muscle": "Muscle"
+  },
+  "createDay": {
+    "title": "Create Training Day",
+    "singleDay": "Single Day",
+    "packs": "Packs ({{count}})",
+    "filter": "Filter:",
+    "all": "All",
+    "suggestedDays": "Suggested Days",
+    "exercises": "{{count}} exercises",
+    "trainingDays": "Training Days",
+    "moreExercises": "+{{count}} more exercises",
+    "addDays_one": "Add {{count}} Day",
+    "addDays_other": "Add {{count}} Days",
+    "blankDayPlaceholder": "Or create blank day...",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days"
+  },
+  "session": {
+    "active": "Active",
+    "local": "Local",
+    "sessions": "Sessions",
+    "finishDay": "Finish Day",
+    "resumeDay": "Resume Day",
+    "deleteSession": "Delete",
+    "shareSession": "Share session",
+    "localOnly": "Session stored locally only",
+    "exercises_one": "{{count}} exercise",
+    "exercises_other": "{{count}} exercises",
+    "sets_one": "{{count}} set",
+    "sets_other": "{{count}} sets",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "totalKg": "{{amount}}kg total",
+    "totalVolume": "{{amount}}kg"
+  },
+  "exercise": {
+    "plan": "Plan",
+    "addExercise": "+ Add exercise",
+    "otherExercises": "Other exercises"
+  },
+  "time": {
+    "hoursMinutes": "{{hours}}h {{minutes}}m",
+    "minutes": "{{minutes}}m",
+    "seconds": "{{seconds}}s"
+  },
+  "dates": {
+    "today": "Today",
+    "yesterday": "Yesterday"
+  },
+  "actionBar": {
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "toast": {
+    "dismiss": "Dismiss"
+  }
+}
