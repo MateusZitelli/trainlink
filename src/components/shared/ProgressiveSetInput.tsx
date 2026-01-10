@@ -45,6 +45,12 @@ const DIFFICULTY_TEXT_COLORS: Record<string, string> = {
   hard: 'text-red-400',
 }
 
+const DIFFICULTY_BG_TINTS: Record<string, string> = {
+  easy: 'bg-green-500/20',
+  normal: 'bg-yellow-500/20',
+  hard: 'bg-red-500/20',
+}
+
 const DIFFICULTY_LABELS: Record<PredictedDifficulty, string> = {
   warmup: 'Warmup',
   easy: 'Easy',
@@ -202,27 +208,33 @@ export function ProgressiveSetInput({
           <div className="p-3 bg-[var(--bg)] rounded-lg">
             <div className="text-xs text-[var(--text-muted)] mb-2">Last session:</div>
             <div className="flex flex-wrap gap-2">
-              {lastSessionSets.map((set, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => {
-                    onKgChange(set.kg.toString())
-                    onRepsChange(set.reps.toString())
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                    i === setNumber - 1
-                      ? 'bg-blue-500/20 ring-1 ring-blue-500/50'
-                      : 'bg-[var(--surface)] hover:bg-[var(--surface-hover)]'
-                  }`}
-                >
-                  <span className={i === setNumber - 1 ? 'text-blue-400' : ''}>{set.kg}</span>
-                  <span className="opacity-60">×</span>
-                  <span className={set.difficulty ? DIFFICULTY_TEXT_COLORS[set.difficulty] || '' : ''}>
-                    {set.reps}
-                  </span>
-                </button>
-              ))}
+              {lastSessionSets.map((set, i) => {
+                const isCurrentSetNumber = i === setNumber - 1
+                const matchesCurrentValues = set.kg === kgNum && set.reps === repsNum
+                const bgTint = set.difficulty ? DIFFICULTY_BG_TINTS[set.difficulty] : 'bg-[var(--surface)]'
+
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      onKgChange(set.kg.toString())
+                      onRepsChange(set.reps.toString())
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${bgTint} ${
+                      matchesCurrentValues
+                        ? 'ring-2 ring-blue-500'
+                        : isCurrentSetNumber
+                          ? 'ring-1 ring-[var(--text-muted)]'
+                          : 'hover:ring-1 hover:ring-[var(--text-muted)]'
+                    }`}
+                  >
+                    <span className={matchesCurrentValues ? 'text-blue-400' : ''}>{set.kg}</span>
+                    <span className="opacity-60">×</span>
+                    <span className={matchesCurrentValues ? 'text-blue-400' : ''}>{set.reps}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}
