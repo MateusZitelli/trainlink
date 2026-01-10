@@ -252,6 +252,7 @@ export function ProgressiveSetInput({
                 type="button"
                 onClick={() => handleStepWeight(-5)}
                 className="w-10 h-10 rounded-lg bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-lg font-medium"
+                tabIndex={-1}
               >
                 −5
               </button>
@@ -259,13 +260,15 @@ export function ProgressiveSetInput({
                 type="number"
                 value={kg}
                 onChange={(e) => onKgChange(e.target.value)}
-                className="w-20 text-center text-2xl font-bold bg-transparent border-none focus:outline-none"
+                className="w-20 text-center text-2xl font-bold bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 rounded"
                 step="0.5"
+                autoFocus={isEmpty}
               />
               <button
                 type="button"
                 onClick={() => handleStepWeight(5)}
                 className="w-10 h-10 rounded-lg bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-lg font-medium"
+                tabIndex={-1}
               >
                 +5
               </button>
@@ -281,6 +284,7 @@ export function ProgressiveSetInput({
                 type="button"
                 onClick={() => handleStepReps(-1)}
                 className="w-10 h-10 rounded-lg bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-lg font-medium"
+                tabIndex={-1}
               >
                 −1
               </button>
@@ -288,12 +292,13 @@ export function ProgressiveSetInput({
                 type="number"
                 value={reps}
                 onChange={(e) => onRepsChange(e.target.value)}
-                className="w-16 text-center text-2xl font-bold bg-transparent border-none focus:outline-none"
+                className="w-16 text-center text-2xl font-bold bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 rounded"
               />
               <button
                 type="button"
                 onClick={() => handleStepReps(1)}
                 className="w-10 h-10 rounded-lg bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-lg font-medium"
+                tabIndex={-1}
               >
                 +1
               </button>
@@ -360,6 +365,7 @@ export function ProgressiveSetInput({
               type="button"
               onClick={() => onRestTimeChange(Math.max(0, restTime - 15))}
               className="w-8 h-8 rounded bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-sm"
+              tabIndex={-1}
             >
               −
             </button>
@@ -368,7 +374,7 @@ export function ProgressiveSetInput({
                 type="number"
                 value={restTime}
                 onChange={(e) => onRestTimeChange(Math.max(0, parseInt(e.target.value) || 0))}
-                className="w-16 text-center font-medium bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500/50 rounded"
+                className="w-16 text-center font-medium bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 rounded"
               />
               <span className="absolute right-1 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] pointer-events-none">s</span>
             </div>
@@ -376,6 +382,7 @@ export function ProgressiveSetInput({
               type="button"
               onClick={() => onRestTimeChange(restTime + 15)}
               className="w-8 h-8 rounded bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-sm"
+              tabIndex={-1}
             >
               +
             </button>
@@ -396,7 +403,8 @@ export function ProgressiveSetInput({
           <button
             type="button"
             onClick={handleStartSet}
-            className={`${isEmpty ? 'flex-1' : 'flex-[2]'} py-3 bg-[var(--text)] text-[var(--bg)] rounded-lg font-medium`}
+            disabled={kgNum === 0 || repsNum === 0}
+            className={`${isEmpty ? 'flex-1' : 'flex-[2]'} py-3 bg-[var(--text)] text-[var(--bg)] rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {t('setInput.startSet')}
           </button>
