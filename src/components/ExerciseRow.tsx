@@ -188,8 +188,8 @@ export function ExerciseRow({
           />
 
           <div className="flex-1 min-w-0">
-            <div className="font-medium truncate">{name}</div>
-            {meta && <div className="text-sm text-[var(--text-muted)] truncate">{meta}</div>}
+            <motion.div layoutId={`exercise-name-${exerciseId}`} className="font-medium truncate">{name}</motion.div>
+            {meta && <motion.div layoutId={`exercise-meta-${exerciseId}`} className="text-sm text-[var(--text-muted)] truncate">{meta}</motion.div>}
           </div>
 
           <div className="text-right shrink-0">
@@ -297,8 +297,8 @@ export function ExerciseRow({
         />
 
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-lg">{name}</div>
-          {meta && <div className="text-sm text-[var(--text-muted)]">{meta}</div>}
+          <motion.div layoutId={`exercise-name-${exerciseId}`} className="font-medium text-lg">{name}</motion.div>
+          {meta && <motion.div layoutId={`exercise-meta-${exerciseId}`} className="text-sm text-[var(--text-muted)]">{meta}</motion.div>}
           <SetsDisplay sets={todaySets} />
         </div>
 
