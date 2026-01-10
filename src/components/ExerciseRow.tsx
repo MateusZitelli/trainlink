@@ -4,11 +4,10 @@ import type {
   Difficulty,
   HistoryEntry,
 } from "../lib/state";
-import { getLastSet, calculateE1rmMetrics, getLastSessionSets } from "../lib/state";
+import { calculateE1rmMetrics, getLastSessionSets } from "../lib/state";
 import { useState, useEffect, useMemo } from "react";
 import { useImageRotation } from "../hooks/useImageRotation";
 import { useElapsedTimer } from "../hooks/useElapsedTimer";
-import { formatTime } from "../lib/utils";
 import {
   SetsDisplay,
   PredictionDisplay,
@@ -86,12 +85,6 @@ export function ExerciseRow({
   // Derived: highlight if current value matches predicted
   const isKgPredicted = prediction !== null && kg === String(prediction.kg);
   const isRepsPredicted = prediction !== null && reps === String(prediction.reps);
-
-  // Get last set's duration for this exercise
-  const lastSetDuration = useMemo(() => {
-    const lastSet = getLastSet(history, exerciseId);
-    return lastSet?.duration;
-  }, [history, exerciseId]);
 
   // Calculate e1RM metrics for this exercise
   const e1rmMetrics = useMemo(() => {
