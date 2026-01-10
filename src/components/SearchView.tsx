@@ -36,9 +36,9 @@ export function SearchView({
 
   const { results, loading, search, dbReady } = useExerciseDB()
 
-  // Debounced search
+  // Debounced search (400ms for smoother typing experience)
   const debouncedSearch = useMemo(
-    () => debounce((f: SearchFilters) => search(f), 300),
+    () => debounce((f: SearchFilters) => search(f), 400),
     [search]
   )
 
@@ -223,49 +223,6 @@ interface SearchResultCardProps {
   activeDay?: string
 }
 
-// Helper to check if matched value corresponds to a field value (English or Portuguese)
-function matchesFieldValue(
-  matchedValue: string,
-  fieldValue: string,
-  translations: Record<string, string>
-): boolean {
-  const matchedLower = matchedValue.toLowerCase()
-  const fieldLower = fieldValue.toLowerCase()
-
-  // Check if matched value contains the English term
-  if (matchedLower.includes(fieldLower)) return true
-
-  // Check if matched value contains the Portuguese translation
-  const portugueseTranslation = translations[fieldValue]
-  if (portugueseTranslation && matchedLower.includes(portugueseTranslation.toLowerCase())) {
-    return true
-  }
-
-  return false
-}
-
-// Check if a specific value was matched (for individual tag highlighting)
-function isValueMatched(
-  matches: SearchMatch[],
-  fieldKey: string,
-  value: string,
-  translations: Record<string, string>
-): boolean {
-  return matches.some(m => {
-    // Direct field match - check if this specific value was matched
-    if (m.key === fieldKey && m.value) {
-      return matchesFieldValue(m.value, value, translations)
-    }
-
-    // Check searchTerms match
-    if (m.key === 'searchTerms' && m.value) {
-      return matchesFieldValue(m.value, value, translations)
-    }
-
-    return false
-  })
-}
-
 // Highlight text based on match indices
 function HighlightedText({ text, indices }: { text: string; indices?: readonly [number, number][] }) {
   if (!indices || indices.length === 0) {
@@ -294,6 +251,51 @@ function HighlightedText({ text, indices }: { text: string; indices?: readonly [
   return <>{parts}</>
 }
 
+const forceIcons: Record<string, string> = {
+  push: '↑',
+  pull: '↓',
+  static: '•',
+}
+
+// All translation maps for building matched values set
+const allTranslationMaps = {
+  muscle: muscleTranslations,
+  equipment: equipmentTranslations,
+  category: categoryTranslations,
+  force: forceTranslations,
+  mechanic: mechanicTranslations,
+  level: levelTranslations,
+}
+
+// Build a set of matched values (both English and Portuguese) for fast lookup
+function buildMatchedValuesSet(matches: SearchMatch[]): Set<string> {
+  const matchedValues = new Set<string>()
+
+  for (const m of matches) {
+    if (!m.value) continue
+
+    const valueLower = m.value.toLowerCase()
+
+    // Add the matched value itself
+    matchedValues.add(valueLower)
+
+    // For each translation map, check if the matched value is a translation
+    // and add the corresponding English key
+    for (const translations of Object.values(allTranslationMaps)) {
+      for (const [englishKey, portugueseValue] of Object.entries(translations)) {
+        if (valueLower.includes(portugueseValue.toLowerCase())) {
+          matchedValues.add(englishKey.toLowerCase())
+        }
+        if (valueLower.includes(englishKey.toLowerCase())) {
+          matchedValues.add(englishKey.toLowerCase())
+        }
+      }
+    }
+  }
+
+  return matchedValues
+}
+
 function SearchResultCard({
   exercise,
   matches,
@@ -307,11 +309,13 @@ function SearchResultCard({
   const { t } = useTranslation()
   const imageIndex = useImageRotation(exercise.imageUrls)
 
-  const forceIcons: Record<string, string> = {
-    push: '↑',
-    pull: '↓',
-    static: '•',
-  }
+  // Pre-compute matched values set once (O(matches) instead of O(matches * tags))
+  const matchedValues = useMemo(() => buildMatchedValuesSet(matches), [matches])
+
+  // Fast lookup for tag highlighting
+  const isTagMatched = useCallback((value: string) => {
+    return matchedValues.has(value.toLowerCase())
+  }, [matchedValues])
 
   // Get match info for display
   const matchInfo = useMemo(() => {
@@ -394,46 +398,46 @@ function SearchResultCard({
         {/* All labels in one row */}
         <div className="flex flex-wrap gap-1 mt-0.5">
           {/* Level */}
-          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium text-white ${LEVEL_COLORS[exercise.level] ?? 'bg-gray-500'} ${isValueMatched(matches, 'level', exercise.level, levelTranslations) ? 'ring-2 ring-yellow-500' : ''}`}>
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium text-white ${LEVEL_COLORS[exercise.level] ?? 'bg-gray-500'} ${isTagMatched(exercise.level) ? 'ring-2 ring-yellow-500' : ''}`}>
             {t(`exerciseLevel.${exercise.level}`, { ns: 'common', defaultValue: exercise.level })}
           </span>
 
           {/* Category */}
-          <span className={`px-1.5 py-0.5 rounded text-[10px] bg-purple-500/20 text-purple-400 ${isValueMatched(matches, 'category', exercise.category, categoryTranslations) ? 'ring-2 ring-yellow-500' : ''}`}>
+          <span className={`px-1.5 py-0.5 rounded text-[10px] bg-purple-500/20 text-purple-400 ${isTagMatched(exercise.category) ? 'ring-2 ring-yellow-500' : ''}`}>
             {t(`exerciseCategory.${exercise.category}`, { ns: 'common', defaultValue: exercise.category })}
           </span>
 
           {/* Equipment */}
           {exercise.equipment && (
-            <span className={`px-1.5 py-0.5 rounded text-[10px] bg-orange-500/20 text-orange-400 ${isValueMatched(matches, 'equipment', exercise.equipment, equipmentTranslations) ? 'ring-2 ring-yellow-500' : ''}`}>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] bg-orange-500/20 text-orange-400 ${isTagMatched(exercise.equipment) ? 'ring-2 ring-yellow-500' : ''}`}>
               {t(`exerciseEquipment.${exercise.equipment}`, { ns: 'common', defaultValue: exercise.equipment })}
             </span>
           )}
 
           {/* Force */}
           {exercise.force && (
-            <span className={`px-1.5 py-0.5 rounded text-[10px] bg-cyan-500/20 text-cyan-400 ${isValueMatched(matches, 'force', exercise.force, forceTranslations) ? 'ring-2 ring-yellow-500' : ''}`}>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] bg-cyan-500/20 text-cyan-400 ${isTagMatched(exercise.force) ? 'ring-2 ring-yellow-500' : ''}`}>
               {forceIcons[exercise.force]} {t(`exerciseForce.${exercise.force}`, { ns: 'common', defaultValue: exercise.force })}
             </span>
           )}
 
           {/* Mechanic */}
           {exercise.mechanic && (
-            <span className={`px-1.5 py-0.5 rounded text-[10px] bg-pink-500/20 text-pink-400 ${isValueMatched(matches, 'mechanic', exercise.mechanic, mechanicTranslations) ? 'ring-2 ring-yellow-500' : ''}`}>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] bg-pink-500/20 text-pink-400 ${isTagMatched(exercise.mechanic) ? 'ring-2 ring-yellow-500' : ''}`}>
               {t(`exerciseMechanic.${exercise.mechanic}`, { ns: 'common', defaultValue: exercise.mechanic })}
             </span>
           )}
 
           {/* Target muscles */}
           {exercise.targetMuscles.map(muscle => (
-            <span key={muscle} className={`px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400 ${isValueMatched(matches, 'targetMuscles', muscle, muscleTranslations) ? 'ring-2 ring-yellow-500' : ''}`}>
+            <span key={muscle} className={`px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400 ${isTagMatched(muscle) ? 'ring-2 ring-yellow-500' : ''}`}>
               {t(`muscle.${muscle}`, { ns: 'common', defaultValue: muscle })}
             </span>
           ))}
 
           {/* Secondary muscles */}
           {exercise.secondaryMuscles.slice(0, 2).map(muscle => (
-            <span key={`sec-${muscle}`} className={`px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg)] text-[var(--text-muted)] ${isValueMatched(matches, 'secondaryMuscles', muscle, muscleTranslations) ? 'ring-2 ring-yellow-500' : ''}`}>
+            <span key={`sec-${muscle}`} className={`px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg)] text-[var(--text-muted)] ${isTagMatched(muscle) ? 'ring-2 ring-yellow-500' : ''}`}>
               {t(`muscle.${muscle}`, { ns: 'common', defaultValue: muscle })}
             </span>
           ))}
