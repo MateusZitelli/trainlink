@@ -72,13 +72,13 @@ export function ExerciseRow({
 }: ExerciseRowProps) {
   const { t } = useTranslation();
 
-  // Use predicted values when available
+  // Use predicted values when available, default reps to 10
   const defaultKg = prediction?.kg;
-  const defaultReps = prediction?.reps;
+  const defaultReps = prediction?.reps ?? 10;
 
   // Form state
   const [kg, setKg] = useState(defaultKg?.toString() ?? "");
-  const [reps, setReps] = useState(defaultReps?.toString() ?? "");
+  const [reps, setReps] = useState(defaultReps.toString());
   const [setStartedAt, setSetStartedAt] = useState<number | null>(null);
   const [showFullImage, setShowFullImage] = useState(false);
 
@@ -114,7 +114,7 @@ export function ExerciseRow({
   // Update kg/reps when prediction values change
   useEffect(() => {
     setKg(prediction?.kg?.toString() ?? "");
-    setReps(prediction?.reps?.toString() ?? "");
+    setReps((prediction?.reps ?? 10).toString());
   }, [prediction?.kg, prediction?.reps]);
 
   const handleStart = () => {

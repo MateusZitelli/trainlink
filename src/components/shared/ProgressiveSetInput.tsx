@@ -242,16 +242,16 @@ export function ProgressiveSetInput({
           </div>
         )}
 
-        {/* Steppers */}
-        <div className="flex gap-4">
+        {/* Steppers - stacked vertically */}
+        <div className="space-y-3">
           {/* Weight stepper */}
-          <div className="flex-1 p-3 bg-[var(--bg)] rounded-lg">
+          <div className="p-4 bg-[var(--bg)] rounded-lg">
             <div className="text-xs text-[var(--text-muted)] mb-2 text-center">{t('setInput.weight')}</div>
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-3">
               <button
                 type="button"
                 onClick={() => handleStepWeight(-5)}
-                className="w-10 h-10 rounded-lg bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-lg font-medium"
+                className="w-14 h-14 rounded-xl bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-xl font-medium active:scale-95 transition-transform"
                 tabIndex={-1}
               >
                 −5
@@ -260,14 +260,14 @@ export function ProgressiveSetInput({
                 type="number"
                 value={kg}
                 onChange={(e) => onKgChange(e.target.value)}
-                className="w-20 text-center text-2xl font-bold bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 rounded"
+                className="w-24 text-center text-3xl font-bold bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 rounded"
                 step="0.5"
                 autoFocus={isEmpty}
               />
               <button
                 type="button"
                 onClick={() => handleStepWeight(5)}
-                className="w-10 h-10 rounded-lg bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-lg font-medium"
+                className="w-14 h-14 rounded-xl bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-xl font-medium active:scale-95 transition-transform"
                 tabIndex={-1}
               >
                 +5
@@ -277,13 +277,13 @@ export function ProgressiveSetInput({
           </div>
 
           {/* Reps stepper */}
-          <div className="flex-1 p-3 bg-[var(--bg)] rounded-lg">
+          <div className="p-4 bg-[var(--bg)] rounded-lg">
             <div className="text-xs text-[var(--text-muted)] mb-2 text-center">{t('setInput.reps')}</div>
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-3">
               <button
                 type="button"
                 onClick={() => handleStepReps(-1)}
-                className="w-10 h-10 rounded-lg bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-lg font-medium"
+                className="w-14 h-14 rounded-xl bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-xl font-medium active:scale-95 transition-transform"
                 tabIndex={-1}
               >
                 −1
@@ -292,18 +292,49 @@ export function ProgressiveSetInput({
                 type="number"
                 value={reps}
                 onChange={(e) => onRepsChange(e.target.value)}
-                className="w-16 text-center text-2xl font-bold bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 rounded"
+                className="w-20 text-center text-3xl font-bold bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 rounded"
               />
               <button
                 type="button"
                 onClick={() => handleStepReps(1)}
-                className="w-10 h-10 rounded-lg bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-lg font-medium"
+                className="w-14 h-14 rounded-xl bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-xl font-medium active:scale-95 transition-transform"
                 tabIndex={-1}
               >
                 +1
               </button>
             </div>
-            <div className="text-xs text-[var(--text-muted)] text-center mt-1">{t('setInput.reps')}</div>
+          </div>
+
+          {/* Rest time stepper */}
+          <div className="p-4 bg-[var(--bg)] rounded-lg">
+            <div className="text-xs text-[var(--text-muted)] mb-2 text-center">{t('setInput.restTime')}</div>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => onRestTimeChange(Math.max(0, restTime - 15))}
+                className="w-14 h-14 rounded-xl bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-xl font-medium active:scale-95 transition-transform"
+                tabIndex={-1}
+              >
+                −15
+              </button>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={restTime}
+                  onChange={(e) => onRestTimeChange(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="w-24 text-center text-3xl font-bold bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 rounded"
+                />
+                <span className="absolute right-0 top-1/2 -translate-y-1/2 text-sm text-[var(--text-muted)] pointer-events-none">s</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => onRestTimeChange(restTime + 15)}
+                className="w-14 h-14 rounded-xl bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-xl font-medium active:scale-95 transition-transform"
+                tabIndex={-1}
+              >
+                +15
+              </button>
+            </div>
           </div>
         </div>
 
@@ -356,38 +387,6 @@ export function ProgressiveSetInput({
             })}
           </div>
         )}
-
-        {/* Rest time */}
-        <div className="flex items-center justify-between p-3 bg-[var(--bg)] rounded-lg">
-          <span className="text-sm text-[var(--text-muted)]">{t('setInput.restTime')}</span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onRestTimeChange(Math.max(0, restTime - 15))}
-              className="w-8 h-8 rounded bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-sm"
-              tabIndex={-1}
-            >
-              −
-            </button>
-            <div className="relative">
-              <input
-                type="number"
-                value={restTime}
-                onChange={(e) => onRestTimeChange(Math.max(0, parseInt(e.target.value) || 0))}
-                className="w-16 text-center font-medium bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 rounded"
-              />
-              <span className="absolute right-1 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] pointer-events-none">s</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => onRestTimeChange(restTime + 15)}
-              className="w-8 h-8 rounded bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-sm"
-              tabIndex={-1}
-            >
-              +
-            </button>
-          </div>
-        </div>
 
         {/* Action buttons */}
         <div className="flex gap-2">

@@ -1004,10 +1004,10 @@ describe('ExerciseRow Component', () => {
       const adjustButton = screen.getByRole('button', { name: /adjust/i })
       fireEvent.click(adjustButton)
 
-      // Should show stepper controls
-      expect(screen.getByText('Weight')).toBeInTheDocument()
-      expect(screen.getByText('Reps')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /start set/i })).toBeInTheDocument()
+      // Should show stepper controls (translation keys shown in tests)
+      expect(screen.getByText(/setInput\.weight/i)).toBeInTheDocument()
+      expect(screen.getByText(/setInput\.reps/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /startSet/i })).toBeInTheDocument()
     })
 
     it('shows active state with timer when Go is clicked', () => {
@@ -1052,12 +1052,12 @@ describe('ExerciseRow Component', () => {
       fireEvent.click(screen.getByRole('button', { name: /go/i }))
       fireEvent.click(screen.getByRole('button', { name: /done/i }))
 
-      // Click to adjust
-      const adjustLink = screen.getByRole('button', { name: /actually did different/i })
+      // Click to adjust (translation key shown in tests)
+      const adjustLink = screen.getByRole('button', { name: /actuallyDidDifferent/i })
       fireEvent.click(adjustLink)
 
-      // Should show adjust state with steppers
-      expect(screen.getByText('What did you actually do?')).toBeInTheDocument()
+      // Should show adjust state with steppers (translation key shown in tests)
+      expect(screen.getByText(/whatDidYouActuallyDo/i)).toBeInTheDocument()
     })
 
     it('shows prediction info when values match predicted', () => {

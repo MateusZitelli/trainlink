@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import Fuse from 'fuse.js'
 import i18n from '../lib/i18n'
 
 const EXERCISES_URL_EN = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json'
@@ -202,10 +203,29 @@ function saveDBCache(exercises: Exercise[]) {
 // Global state - per language (initialized lazily after i18n is ready)
 let exerciseCache: Map<string, Exercise> | null = null
 let allExercises: Exercise[] | null = null
+let fuseInstance: Fuse<Exercise> | null = null
 let dbLoading = false
 let dbLoaded = false
 let currentLanguage: string | null = null
 const dbLoadCallbacks: (() => void)[] = []
+
+// Fuse.js options for fuzzy search
+const fuseOptions: Fuse.IFuseOptions<Exercise> = {
+  keys: [
+    { name: 'name', weight: 2 },
+    { name: 'targetMuscles', weight: 1.5 },
+    { name: 'secondaryMuscles', weight: 1 },
+    { name: 'equipment', weight: 1 },
+    { name: 'category', weight: 1 },
+    { name: 'force', weight: 0.8 },
+    { name: 'mechanic', weight: 0.8 },
+    { name: 'level', weight: 0.5 },
+  ],
+  threshold: 0.4,
+  includeScore: true,
+  ignoreLocation: true,
+  minMatchCharLength: 2,
+}
 
 // Lazy initialization - only load cache after i18n language is determined
 function ensureInitialized() {
@@ -222,6 +242,11 @@ function ensureInitialized() {
   if (allExercises && allExercises.length > 0 && filterOptions.levels.length === 0) {
     filterOptions = deriveFilterOptions(allExercises)
   }
+
+  // Initialize Fuse instance for fuzzy search
+  if (allExercises && allExercises.length > 0) {
+    fuseInstance = new Fuse(allExercises, fuseOptions)
+  }
 }
 
 // Reset database state for language change
@@ -237,10 +262,12 @@ function resetDBState() {
     allExercises = newExercises
     dbLoaded = true
     filterOptions = deriveFilterOptions(allExercises)
+    fuseInstance = new Fuse(allExercises, fuseOptions)
   } else {
     // No cached data for new language - keep old cache and mark for reload
     // This prevents showing raw IDs while fetching new language
     dbLoaded = false
+    fuseInstance = null
   }
 
   dbLoading = false
@@ -277,6 +304,9 @@ async function loadExerciseDB(): Promise<Exercise[]> {
     // Derive and cache filter options
     filterOptions = deriveFilterOptions(allExercises)
     saveFilterOptions(filterOptions)
+
+    // Initialize Fuse instance for fuzzy search
+    fuseInstance = new Fuse(allExercises, fuseOptions)
 
     dbLoaded = true
     dbLoadCallbacks.forEach(cb => cb())
@@ -373,18 +403,24 @@ export function useExerciseDB() {
       // Filter exercises
       let filtered: Exercise[] = exercises
 
-      // Text search across multiple fields
+      // Fuzzy search across multiple fields using Fuse.js
       if (query) {
-        filtered = filtered.filter(ex =>
-          ex.name.toLowerCase().includes(query) ||
-          ex.targetMuscles.some(m => m.toLowerCase().includes(query)) ||
-          ex.secondaryMuscles.some(m => m.toLowerCase().includes(query)) ||
-          (ex.equipment?.toLowerCase().includes(query) ?? false) ||
-          ex.category.toLowerCase().includes(query) ||
-          (ex.force?.toLowerCase().includes(query) ?? false) ||
-          (ex.mechanic?.toLowerCase().includes(query) ?? false) ||
-          ex.level.toLowerCase().includes(query)
-        )
+        if (fuseInstance) {
+          const fuseResults = fuseInstance.search(query)
+          filtered = fuseResults.map(result => result.item)
+        } else {
+          // Fallback to simple includes search if Fuse not initialized
+          filtered = filtered.filter(ex =>
+            ex.name.toLowerCase().includes(query) ||
+            ex.targetMuscles.some(m => m.toLowerCase().includes(query)) ||
+            ex.secondaryMuscles.some(m => m.toLowerCase().includes(query)) ||
+            (ex.equipment?.toLowerCase().includes(query) ?? false) ||
+            ex.category.toLowerCase().includes(query) ||
+            (ex.force?.toLowerCase().includes(query) ?? false) ||
+            (ex.mechanic?.toLowerCase().includes(query) ?? false) ||
+            ex.level.toLowerCase().includes(query)
+          )
+        }
       }
 
       // Apply filters
