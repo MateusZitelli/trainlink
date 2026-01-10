@@ -2,82 +2,13 @@ import type { Day, HistoryEntry, SetEntry } from '../lib/state'
 import { getSetsForExerciseToday, getDefaultRest, predictNextExercise, predictExerciseValues, getCurrentSessionSets } from '../lib/state'
 import { ExerciseRow } from './ExerciseRow'
 import { useExerciseDB } from '../hooks/useExerciseDB'
-import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Reorder, AnimatePresence, useDragControls } from 'motion/react'
 import { springs } from '../lib/animations'
 
-const HOLD_DURATION = 300 // ms to hold before drag starts
-
-// Hook for hold-to-drag behavior
-function useHoldToDrag(dragControls: ReturnType<typeof useDragControls>) {
-  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const startPos = useRef<{ x: number; y: number } | null>(null)
-  const [isHolding, setIsHolding] = useState(false)
-  const isDragging = useRef(false)
-
-  const clearHold = useCallback(() => {
-    if (holdTimer.current) {
-      clearTimeout(holdTimer.current)
-      holdTimer.current = null
-    }
-    setIsHolding(false)
-    startPos.current = null
-  }, [])
-
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    // Only handle primary pointer (touch or left click)
-    if (e.button !== 0) return
-
-    startPos.current = { x: e.clientX, y: e.clientY }
-    isDragging.current = false
-
-    holdTimer.current = setTimeout(() => {
-      if (startPos.current) {
-        setIsHolding(true)
-        isDragging.current = true
-        // Vibrate on mobile if available
-        if (navigator.vibrate) {
-          navigator.vibrate(50)
-        }
-        dragControls.start(e.nativeEvent as PointerEvent)
-      }
-    }, HOLD_DURATION)
-  }, [dragControls])
-
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!startPos.current || isDragging.current) return
-
-    // If moved more than 10px before hold completes, cancel (user is scrolling)
-    const dx = e.clientX - startPos.current.x
-    const dy = e.clientY - startPos.current.y
-    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-      clearHold()
-    }
-  }, [clearHold])
-
-  const handlePointerUp = useCallback(() => {
-    clearHold()
-    isDragging.current = false
-  }, [clearHold])
-
-  const handlePointerCancel = useCallback(() => {
-    clearHold()
-    isDragging.current = false
-  }, [clearHold])
-
-  return {
-    isHolding,
-    handlers: {
-      onPointerDown: handlePointerDown,
-      onPointerMove: handlePointerMove,
-      onPointerUp: handlePointerUp,
-      onPointerCancel: handlePointerCancel,
-    },
-  }
-}
-
-// Wrapper component for reorderable exercise row with hold-to-drag
+// Wrapper component for reorderable exercise row
+// Uses a drag handle for reliable mobile experience
 function ReorderableExerciseRow({
   item,
   children,
@@ -85,14 +16,13 @@ function ReorderableExerciseRow({
   item: SortableItem
   children: React.ReactNode
 }) {
-  const dragControls = useDragControls()
-  const { isHolding, handlers } = useHoldToDrag(dragControls)
+  const controls = useDragControls()
 
   return (
     <Reorder.Item
       value={item}
       dragListener={false}
-      dragControls={dragControls}
+      dragControls={controls}
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, height: 0 }}
@@ -102,10 +32,27 @@ function ReorderableExerciseRow({
         boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
         zIndex: 50,
       }}
-      className={`relative ${isHolding ? 'ring-2 ring-[var(--accent)]' : ''}`}
-      {...handlers}
+      className="relative"
     >
-      {children}
+      <div className="flex">
+        <div className="flex-1">{children}</div>
+        <div
+          className="flex items-center px-2 text-[var(--text-muted)] cursor-grab active:cursor-grabbing touch-none"
+          onPointerDown={(e) => {
+            e.preventDefault()
+            controls.start(e)
+          }}
+        >
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor" className="opacity-40">
+            <circle cx="2" cy="2" r="1.5" />
+            <circle cx="6" cy="2" r="1.5" />
+            <circle cx="2" cy="7" r="1.5" />
+            <circle cx="6" cy="7" r="1.5" />
+            <circle cx="2" cy="12" r="1.5" />
+            <circle cx="6" cy="12" r="1.5" />
+          </svg>
+        </div>
+      </div>
     </Reorder.Item>
   )
 }
