@@ -4,12 +4,8 @@ import { ExerciseRow } from './ExerciseRow'
 import { useExerciseDB } from '../hooks/useExerciseDB'
 import { useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-  type DropResult,
-} from '@hello-pangea/dnd'
+import { Reorder, AnimatePresence } from 'motion/react'
+import { springs } from '../lib/animations'
 
 interface ExerciseListProps {
   day: Day
@@ -26,6 +22,10 @@ interface ExerciseListProps {
   onClearRest: () => void
 }
 
+interface SortableItem {
+  id: string
+  exId: string
+}
 
 export function ExerciseList({
   day,
@@ -68,17 +68,31 @@ export function ExerciseList({
   }, [currentSessionSets, day.exercises, currentExId])
 
   // Create unique IDs for sortable (handle duplicate exercises)
-  const sortableItems = day.exercises.map((exId, index) => ({
-    id: `${exId}-${index}`,
-    exId,
-  }))
+  const sortableItems: SortableItem[] = useMemo(() =>
+    day.exercises.map((exId, index) => ({
+      id: `${exId}-${index}`,
+      exId,
+    })),
+    [day.exercises]
+  )
 
-  const handleDragEnd = useCallback((result: DropResult) => {
-    const { source, destination } = result
-    if (!destination) return
-    if (source.index === destination.index) return
-    onMoveExercise(source.index, destination.index)
-  }, [onMoveExercise])
+  const handleReorder = useCallback((newItems: SortableItem[]) => {
+    // Find what moved by comparing old and new positions
+    const oldIds = sortableItems.map(item => item.id)
+    const newIds = newItems.map(item => item.id)
+
+    // Find the item that moved
+    for (let i = 0; i < oldIds.length; i++) {
+      if (oldIds[i] !== newIds[i]) {
+        const movedId = oldIds[i]
+        const newIndex = newIds.indexOf(movedId)
+        if (newIndex !== -1 && newIndex !== i) {
+          onMoveExercise(i, newIndex)
+          return
+        }
+      }
+    }
+  }, [sortableItems, onMoveExercise])
 
   return (
     <div className="px-4 pb-4 space-y-2">
@@ -86,62 +100,55 @@ export function ExerciseList({
         {t('exercise.plan')} — {day.name}
       </h2>
 
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="exercise-list">
-          {(provided) => (
-            <div
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-              className="space-y-2"
-            >
-              {sortableItems.map((item, index) => {
-                const exercise = getExercise(item.exId)
-                const prediction = predictExerciseValues(history, restTimes, item.exId)
-                const todaySets = getSetsForExerciseToday(history, item.exId)
-                const isSelected = currentExId === item.exId
-                const isNextExercise = nextExercisePrediction?.exId === item.exId
+      <Reorder.Group
+        axis="y"
+        values={sortableItems}
+        onReorder={handleReorder}
+        className="space-y-2"
+      >
+        <AnimatePresence initial={false}>
+          {sortableItems.map((item) => {
+            const exercise = getExercise(item.exId)
+            const prediction = predictExerciseValues(history, restTimes, item.exId)
+            const todaySets = getSetsForExerciseToday(history, item.exId)
+            const isSelected = currentExId === item.exId
+            const isNextExercise = nextExercisePrediction?.exId === item.exId
 
-                return (
-                  <Draggable
-                    key={item.id}
-                    draggableId={item.id}
-                    index={index}
-                  >
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                        style={{
-                          ...provided.draggableProps.style,
-                          opacity: snapshot.isDragging ? 0.8 : 1,
-                        }}
-                      >
-                        <ExerciseRow
-                          exercise={exercise}
-                          exerciseId={item.exId}
-                          todaySets={todaySets}
-                          isSelected={isSelected}
-                          isNextExercise={isNextExercise}
-                          prediction={prediction}
-                          restTime={prediction?.rest ?? getDefaultRest(history, item.exId, restTimes)}
-                          history={history}
-                          onClick={() => onSelectExercise(isSelected ? undefined : item.exId)}
-                          onRemove={() => onRemoveExercise(item.exId)}
-                          onLogSet={(kg, reps, difficulty, duration) => onLogSet({ exId: item.exId, kg, reps, difficulty, duration })}
-                          onSetRestTime={(seconds) => onSetRestTime(item.exId, seconds)}
-                          onStartSet={onClearRest}
-                        />
-                      </div>
-                    )}
-                  </Draggable>
-                )
-              })}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+            return (
+              <Reorder.Item
+                key={item.id}
+                value={item}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10, height: 0 }}
+                transition={springs.snappy}
+                whileDrag={{
+                  scale: 1.02,
+                  boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
+                  cursor: 'grabbing'
+                }}
+                style={{ position: 'relative' }}
+              >
+                <ExerciseRow
+                  exercise={exercise}
+                  exerciseId={item.exId}
+                  todaySets={todaySets}
+                  isSelected={isSelected}
+                  isNextExercise={isNextExercise}
+                  prediction={prediction}
+                  restTime={prediction?.rest ?? getDefaultRest(history, item.exId, restTimes)}
+                  history={history}
+                  onClick={() => onSelectExercise(isSelected ? undefined : item.exId)}
+                  onRemove={() => onRemoveExercise(item.exId)}
+                  onLogSet={(kg, reps, difficulty, duration) => onLogSet({ exId: item.exId, kg, reps, difficulty, duration })}
+                  onSetRestTime={(seconds) => onSetRestTime(item.exId, seconds)}
+                  onStartSet={onClearRest}
+                />
+              </Reorder.Item>
+            )
+          })}
+        </AnimatePresence>
+      </Reorder.Group>
 
       {/* Add Exercise Button */}
       <button
