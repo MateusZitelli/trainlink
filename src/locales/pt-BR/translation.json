@@ -1,0 +1,96 @@
+{
+  "app": {
+    "name": "TrainLink",
+    "shareSuccess": "Link de compartilhamento copiado!",
+    "clearConfirm": "Limpar todos os dados salvos? Isso redefinirá o app ao estado inicial."
+  },
+  "welcome": {
+    "title": "Bem-vindo ao TrainLink",
+    "subtitle": "Crie seu primeiro dia de treino para começar",
+    "addDayButton": "+ Adicionar Dia de Treino"
+  },
+  "dayTabs": {
+    "moveLeft": "← Mover para Esquerda",
+    "moveRight": "Mover para Direita →",
+    "rename": "Renomear",
+    "delete": "Excluir",
+    "deleteConfirm": "Excluir \"{{name}}\"?",
+    "clearAllData": "Limpar Todos os Dados"
+  },
+  "search": {
+    "placeholder": "Buscar exercícios...",
+    "loading": "Carregando banco de exercícios...",
+    "searching": "Buscando...",
+    "noResults": "Nenhum exercício encontrado",
+    "initialHint": "Busque ou filtre para encontrar exercícios",
+    "openFilters": "Abra os filtros para navegar",
+    "addButton": "+ Adicionar",
+    "doNowButton": "▶ Fazer Agora"
+  },
+  "filters": {
+    "exercises_one": "{{count}} exercício",
+    "exercises_other": "{{count}} exercícios",
+    "clearFilters": "Limpar filtros",
+    "level": "Nível",
+    "category": "Categoria",
+    "force": "Força",
+    "type": "Tipo",
+    "equipment": "Equipamento",
+    "muscle": "Músculo"
+  },
+  "createDay": {
+    "title": "Criar Dia de Treino",
+    "singleDay": "Dia Único",
+    "packs": "Pacotes ({{count}})",
+    "filter": "Filtrar:",
+    "all": "Todos",
+    "suggestedDays": "Dias Sugeridos",
+    "exercises": "{{count}} exercícios",
+    "trainingDays": "Dias de Treino",
+    "moreExercises": "+{{count}} exercícios adicionais",
+    "addDays_one": "Adicionar {{count}} Dia",
+    "addDays_other": "Adicionar {{count}} Dias",
+    "blankDayPlaceholder": "Ou crie um dia em branco...",
+    "days_one": "{{count}} dia",
+    "days_other": "{{count}} dias"
+  },
+  "session": {
+    "active": "Ativo",
+    "local": "Local",
+    "sessions": "Sessões",
+    "finishDay": "Finalizar Dia",
+    "resumeDay": "Retomar Dia",
+    "deleteSession": "Excluir",
+    "shareSession": "Compartilhar sessão",
+    "localOnly": "Sessão armazenada apenas localmente",
+    "exercises_one": "{{count}} exercício",
+    "exercises_other": "{{count}} exercícios",
+    "sets_one": "{{count}} série",
+    "sets_other": "{{count}} séries",
+    "days_one": "{{count}} dia",
+    "days_other": "{{count}} dias",
+    "totalKg": "{{amount}}kg total",
+    "totalVolume": "{{amount}}kg"
+  },
+  "exercise": {
+    "plan": "Plano",
+    "addExercise": "+ Adicionar exercício",
+    "otherExercises": "Outros exercícios"
+  },
+  "time": {
+    "hoursMinutes": "{{hours}}h {{minutes}}m",
+    "minutes": "{{minutes}}m",
+    "seconds": "{{seconds}}s"
+  },
+  "dates": {
+    "today": "Hoje",
+    "yesterday": "Ontem"
+  },
+  "actionBar": {
+    "edit": "Editar",
+    "delete": "Excluir"
+  },
+  "toast": {
+    "dismiss": "Dispensar"
+  }
+}

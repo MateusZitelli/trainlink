@@ -1,0 +1,28 @@
+{
+  "buttons": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "add": "Adicionar",
+    "undo": "Desfazer",
+    "back": "Voltar",
+    "create": "Criar"
+  },
+  "difficulty": {
+    "easy": "Fácil",
+    "normal": "Normal",
+    "hard": "Difícil"
+  },
+  "dayDifficulty": {
+    "beginner": "Iniciante",
+    "intermediate": "Intermediário",
+    "advanced": "Avançado"
+  },
+  "units": {
+    "kg": "kg",
+    "reps": "reps",
+    "sets": "séries",
+    "seconds": "s",
+    "rest": "descanso"
+  }
+}

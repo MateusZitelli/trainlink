@@ -1,9 +1,26 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import i18n from '../lib/i18n'
 
-const EXERCISES_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json'
+const EXERCISES_URL_EN = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json'
+const EXERCISES_URL_PT_BR = '/data/exercises-pt-br.json'
 const IMAGE_BASE_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'
-const CACHE_KEY = 'workout-exercise-cache-v4'
-const DB_CACHE_KEY = 'workout-free-exercise-db-v3'
+
+function getExercisesUrl(): string {
+  const lang = i18n.language
+  if (lang === 'pt-BR' || lang === 'pt') {
+    return EXERCISES_URL_PT_BR
+  }
+  return EXERCISES_URL_EN
+}
+
+function getCacheKey(base: string): string {
+  const lang = i18n.language
+  const langSuffix = lang === 'pt-BR' || lang === 'pt' ? '-pt-BR' : '-en'
+  return base + langSuffix
+}
+
+const CACHE_KEY_BASE = 'workout-exercise-cache-v4'
+const DB_CACHE_KEY_BASE = 'workout-free-exercise-db-v3'
 const FILTER_OPTIONS_KEY = 'workout-filter-options-v2'
 
 // Filter options - will be populated from data
@@ -138,7 +155,7 @@ function mapExercise(raw: RawExercise): Exercise {
 // Load exercise cache from localStorage
 function loadExerciseCache(): Map<string, Exercise> {
   try {
-    const stored = localStorage.getItem(CACHE_KEY)
+    const stored = localStorage.getItem(getCacheKey(CACHE_KEY_BASE))
     if (stored) {
       const parsed = JSON.parse(stored) as Record<string, Exercise>
       return new Map(Object.entries(parsed))
@@ -153,7 +170,7 @@ function loadExerciseCache(): Map<string, Exercise> {
 function saveExerciseCache(cache: Map<string, Exercise>) {
   try {
     const obj = Object.fromEntries(cache)
-    localStorage.setItem(CACHE_KEY, JSON.stringify(obj))
+    localStorage.setItem(getCacheKey(CACHE_KEY_BASE), JSON.stringify(obj))
   } catch {
     // Ignore errors (e.g., quota exceeded)
   }
@@ -162,7 +179,7 @@ function saveExerciseCache(cache: Map<string, Exercise>) {
 // Load full DB from localStorage
 function loadDBCache(): Exercise[] | null {
   try {
-    const stored = localStorage.getItem(DB_CACHE_KEY)
+    const stored = localStorage.getItem(getCacheKey(DB_CACHE_KEY_BASE))
     if (stored) {
       return JSON.parse(stored) as Exercise[]
     }
@@ -175,22 +192,35 @@ function loadDBCache(): Exercise[] | null {
 // Save full DB to localStorage
 function saveDBCache(exercises: Exercise[]) {
   try {
-    localStorage.setItem(DB_CACHE_KEY, JSON.stringify(exercises))
+    localStorage.setItem(getCacheKey(DB_CACHE_KEY_BASE), JSON.stringify(exercises))
   } catch {
     // Ignore errors (e.g., quota exceeded)
   }
 }
 
-// Global state
-const exerciseCache = loadExerciseCache()
+// Global state - per language
+let exerciseCache = loadExerciseCache()
 let allExercises: Exercise[] = loadDBCache() ?? []
 let dbLoading = false
 let dbLoaded = allExercises.length > 0
+let currentLanguage = i18n.language
 const dbLoadCallbacks: (() => void)[] = []
 
 // Initialize filter options from cached exercises if available
 if (allExercises.length > 0 && filterOptions.levels.length === 0) {
   filterOptions = deriveFilterOptions(allExercises)
+}
+
+// Reset database state for language change
+function resetDBState() {
+  exerciseCache = loadExerciseCache()
+  allExercises = loadDBCache() ?? []
+  dbLoading = false
+  dbLoaded = allExercises.length > 0
+  currentLanguage = i18n.language
+  if (allExercises.length > 0) {
+    filterOptions = deriveFilterOptions(allExercises)
+  }
 }
 
 // Load the full exercise database
@@ -205,7 +235,8 @@ async function loadExerciseDB(): Promise<Exercise[]> {
   dbLoading = true
 
   try {
-    const response = await fetch(EXERCISES_URL)
+    const exercisesUrl = getExercisesUrl()
+    const response = await fetch(exercisesUrl)
     if (!response.ok) throw new Error('Failed to load exercise database')
 
     const rawData: RawExercise[] = await response.json()
@@ -241,13 +272,38 @@ export function useExerciseDB() {
   const [dbReady, setDbReady] = useState(dbLoaded)
   const searchTermRef = useRef('')
 
-  // Load DB on mount
+  // Load DB on mount and handle language changes
   useEffect(() => {
-    if (!dbLoaded) {
+    const loadDB = async () => {
+      // Check if language changed
+      if (currentLanguage !== i18n.language) {
+        resetDBState()
+        setDbReady(false)
+      }
+
+      if (!dbLoaded) {
+        await loadExerciseDB()
+        setDbReady(true)
+        setCacheVersion(v => v + 1)
+      }
+    }
+
+    loadDB()
+
+    // Listen for language changes
+    const handleLanguageChange = () => {
+      resetDBState()
+      setDbReady(false)
+      setResults([])
       loadExerciseDB().then(() => {
         setDbReady(true)
         setCacheVersion(v => v + 1)
       })
+    }
+
+    i18n.on('languageChanged', handleLanguageChange)
+    return () => {
+      i18n.off('languageChanged', handleLanguageChange)
     }
   }, [])
 
