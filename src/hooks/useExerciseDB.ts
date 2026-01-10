@@ -94,6 +94,7 @@ function deriveFilterOptions(exercises: Exercise[]): FilterOptions {
 }
 
 export function getFilterOptions(): FilterOptions {
+  ensureInitialized()
   return filterOptions
 }
 
@@ -295,7 +296,7 @@ export function useExerciseDB() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cacheVersion, setCacheVersion] = useState(0)
-  const [dbReady, setDbReady] = useState(dbLoaded)
+  const [dbReady, setDbReady] = useState(false)
   const [language, setLanguage] = useState(i18n.language)
   const searchTermRef = useRef('')
 
@@ -315,6 +316,9 @@ export function useExerciseDB() {
     let cancelled = false
 
     const loadDB = async () => {
+      // Ensure cache is initialized for current language
+      ensureInitialized()
+
       // Check if we need to reload for new language
       if (currentLanguage !== language) {
         if (!cancelled) setDbReady(false)
@@ -361,13 +365,13 @@ export function useExerciseDB() {
 
     try {
       // Ensure DB is loaded
-      const exercises = dbLoaded ? allExercises : await loadExerciseDB()
+      const exercises = dbLoaded && allExercises ? allExercises : await loadExerciseDB()
 
       // Check if search term changed while loading
       if (searchTermRef.current !== query) return
 
       // Filter exercises
-      let filtered = exercises
+      let filtered: Exercise[] = exercises
 
       // Text search across multiple fields
       if (query) {
@@ -423,12 +427,15 @@ export function useExerciseDB() {
 
   const getExercise = useCallback((exerciseId: string): Exercise | null => {
     void cacheVersion // Depend on cache version for re-renders
-    return exerciseCache.get(exerciseId) ?? null
+    ensureInitialized()
+    return exerciseCache?.get(exerciseId) ?? null
   }, [cacheVersion])
 
   const fetchExercise = useCallback(async (exerciseId: string): Promise<Exercise | null> => {
+    ensureInitialized()
+
     // Check cache first
-    if (exerciseCache.has(exerciseId)) {
+    if (exerciseCache?.has(exerciseId)) {
       return exerciseCache.get(exerciseId)!
     }
 
@@ -438,12 +445,14 @@ export function useExerciseDB() {
       setCacheVersion(v => v + 1)
     }
 
-    return exerciseCache.get(exerciseId) ?? null
+    return exerciseCache?.get(exerciseId) ?? null
   }, [])
 
   // Fetch multiple exercises at once
   const fetchExercises = useCallback(async (exerciseIds: string[]) => {
-    const missing = exerciseIds.filter(id => !exerciseCache.has(id))
+    ensureInitialized()
+
+    const missing = exerciseIds.filter(id => !exerciseCache?.has(id))
     if (missing.length === 0) return
 
     // Load DB to get all exercises
@@ -456,7 +465,8 @@ export function useExerciseDB() {
   // Get all exercises (for browsing)
   const getAllExercises = useCallback((): Exercise[] => {
     void cacheVersion
-    return allExercises
+    ensureInitialized()
+    return allExercises || []
   }, [cacheVersion])
 
   return {

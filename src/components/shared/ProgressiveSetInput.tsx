@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
+import { motion } from 'motion/react'
 import type { Difficulty, PredictedDifficulty } from '../../lib/state'
 import { predictDifficulty, getWeightForDifficulty } from '../../lib/state'
 import { springs } from '../../lib/animations'
