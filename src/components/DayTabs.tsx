@@ -1,7 +1,9 @@
 import type { Day } from '../lib/state'
 import { useState, useRef, useEffect } from 'react'
+import { motion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 import { LanguageSwitcher } from './LanguageSwitcher'
+import { springs } from '../lib/animations'
 
 interface DayTabsProps {
   days: Day[]
@@ -111,7 +113,7 @@ export function DayTabs({
                 className="px-3 py-2 text-sm font-medium bg-[var(--surface)] border border-[var(--border)] rounded w-24"
               />
             ) : (
-              <button
+              <motion.button
                 ref={(el) => {
                   if (el) buttonRefs.current.set(day.name, el)
                   else buttonRefs.current.delete(day.name)
@@ -130,25 +132,34 @@ export function DayTabs({
                 onTouchStart={() => handleTouchStart(day.name)}
                 onTouchEnd={handleTouchEnd}
                 onTouchMove={handleTouchEnd}
-                className={`px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                className={`relative px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
                   activeDay === day.name
-                    ? 'text-[var(--text)] border-b-2 border-[var(--text)]'
+                    ? 'text-[var(--text)]'
                     : 'text-[var(--text-muted)]'
                 }`}
+                whileTap={{ scale: 0.95 }}
               >
                 {day.name}
-              </button>
+                {activeDay === day.name && (
+                  <motion.div
+                    layoutId="activeTabIndicator"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--text)]"
+                    transition={springs.snappy}
+                  />
+                )}
+              </motion.button>
             )}
           </div>
         ))}
 
         {/* Add Day Button */}
-        <button
+        <motion.button
           onClick={handleAddDay}
           className="px-3 py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text)]"
+          whileTap={{ scale: 0.9 }}
         >
           +
-        </button>
+        </motion.button>
 
         {/* Spacer */}
         <div className="flex-1" />

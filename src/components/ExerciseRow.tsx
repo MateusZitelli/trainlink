@@ -6,6 +6,7 @@ import type {
 } from "../lib/state";
 import { calculateE1rmMetrics, getLastSessionSets } from "../lib/state";
 import { useState, useEffect, useMemo } from "react";
+import { motion } from "motion/react";
 import { useImageRotation } from "../hooks/useImageRotation";
 import { useElapsedTimer } from "../hooks/useElapsedTimer";
 import {
@@ -15,6 +16,7 @@ import {
   E1rmDisplay,
   ProgressiveSetInput,
 } from "./shared";
+import { springs } from "../lib/animations";
 
 interface Exercise {
   exerciseId: string;
@@ -152,7 +154,11 @@ export function ExerciseRow({
   // Collapsed view
   if (!isSelected) {
     return (
-      <div className={`rounded-lg ${isNextExercise ? "bg-blue-500/5" : ""}`}>
+      <motion.div
+        layout
+        className={`rounded-lg ${isNextExercise ? "bg-blue-500/5" : ""}`}
+        transition={springs.snappy}
+      >
         <div className="flex items-center gap-2 p-3 cursor-pointer" onClick={onClick}>
           {isNextExercise && <span className="text-lg text-blue-500">→</span>}
 
@@ -179,51 +185,63 @@ export function ExerciseRow({
           </div>
 
           {isActive ? (
-            <button
+            <motion.button
               onClick={handleQuickFinish}
               className="p-2 bg-[var(--success)] text-white rounded-lg shrink-0"
               aria-label="Finish set"
+              whileTap={{ scale: 0.9 }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
-            </button>
+            </motion.button>
           ) : hasParams ? (
-            <button
+            <motion.button
               onClick={handleQuickStart}
               className="p-2 bg-[var(--text)] text-[var(--bg)] rounded-lg shrink-0"
               aria-label="Start set"
+              whileTap={{ scale: 0.9 }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
                 <polygon points="5 3 19 12 5 21 5 3" />
               </svg>
-            </button>
+            </motion.button>
           ) : null}
 
           {onAddToPlan && (
-            <button
+            <motion.button
               onClick={(e) => { e.stopPropagation(); onAddToPlan(); }}
               className="p-2 text-[var(--text-muted)] hover:text-[var(--success)]"
               aria-label="Add to plan"
+              whileTap={{ scale: 0.9 }}
             >
               +
-            </button>
+            </motion.button>
           )}
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   // Expanded view - using ProgressiveSetInput for both active and inactive states
   return (
-    <div className="bg-[var(--surface)] rounded-lg p-4 space-y-4">
+    <motion.div
+      layout
+      className="bg-[var(--surface)] rounded-lg p-4 space-y-4"
+      initial={{ opacity: 0.8 }}
+      animate={{ opacity: 1 }}
+      transition={springs.snappy}
+    >
       {showFullImage && imageUrls.length > 0 && (
-        <div
+        <motion.div
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
           onClick={() => setShowFullImage(false)}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
         >
           <img src={imageUrls[imageIndex]} alt={name} className="max-w-full max-h-full object-contain" />
-        </div>
+        </motion.div>
       )}
 
       <div className="flex gap-4 cursor-pointer" onClick={onClick}>
@@ -339,6 +357,6 @@ export function ExerciseRow({
         onStart={handleStart}
         onFinish={handleFinish}
       />
-    </div>
+    </motion.div>
   );
 }
