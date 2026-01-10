@@ -171,7 +171,13 @@ export function ExerciseRow({
             </motion.span>
           )}
 
-          <ExerciseImage imageUrls={imageUrls} imageIndex={imageIndex} name={name} size="sm" />
+          <ExerciseImage
+            imageUrls={imageUrls}
+            imageIndex={imageIndex}
+            name={name}
+            size="sm"
+            layoutId={`exercise-image-${exerciseId}`}
+          />
 
           <div className="flex-1 min-w-0">
             <div className="font-medium truncate">{name}</div>
@@ -289,6 +295,7 @@ export function ExerciseRow({
           imageIndex={imageIndex}
           name={name}
           size="md"
+          layoutId={`exercise-image-${exerciseId}`}
           onImageClick={() => setShowFullImage(true)}
         />
 

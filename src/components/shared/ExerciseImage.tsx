@@ -1,8 +1,12 @@
+import { motion } from 'motion/react'
+import { springs } from '../../lib/animations'
+
 interface ExerciseImageProps {
   imageUrls: string[]
   imageIndex: number
   name: string
   size?: 'sm' | 'md' | 'lg'
+  layoutId?: string
   onImageClick?: () => void
 }
 
@@ -17,6 +21,7 @@ export function ExerciseImage({
   imageIndex,
   name,
   size = 'md',
+  layoutId,
   onImageClick,
 }: ExerciseImageProps) {
   const sizeClass = sizeClasses[size]
@@ -30,18 +35,24 @@ export function ExerciseImage({
 
   if (imageUrls.length > 0) {
     return (
-      <img
+      <motion.img
+        layoutId={layoutId}
         src={imageUrls[imageIndex]}
         alt={name}
-        className={`${sizeClass} rounded-lg object-cover bg-[var(--bg)] ${onImageClick ? 'cursor-zoom-in' : ''}`}
+        className={`${sizeClass} rounded-lg object-cover bg-[var(--bg)] shrink-0 ${onImageClick ? 'cursor-zoom-in' : ''}`}
         onClick={handleClick}
+        transition={springs.snappy}
       />
     )
   }
 
   return (
-    <div className={`${sizeClass} rounded-lg bg-[var(--bg)] flex items-center justify-center text-[var(--text-muted)] text-xl`}>
+    <motion.div
+      layoutId={layoutId}
+      className={`${sizeClass} rounded-lg bg-[var(--bg)] flex items-center justify-center text-[var(--text-muted)] text-xl shrink-0`}
+      transition={springs.snappy}
+    >
       ?
-    </div>
+    </motion.div>
   )
 }
