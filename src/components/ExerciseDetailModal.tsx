@@ -126,7 +126,7 @@ export function ExerciseDetailModal({
           {/* Equipment */}
           {exercise.equipment && (
             <div>
-              <h3 className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">Equipment</h3>
+              <h3 className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">{t('exercise.equipment')}</h3>
               <p className="text-sm">{translateValue('exerciseEquipment', exercise.equipment)}</p>
             </div>
           )}
@@ -134,7 +134,7 @@ export function ExerciseDetailModal({
           {/* Muscles */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <h3 className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">Target Muscles</h3>
+              <h3 className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">{t('exercise.targetMuscles')}</h3>
               <div className="flex flex-wrap gap-1">
                 {exercise.targetMuscles.map(muscle => (
                   <span key={muscle} className="px-2 py-0.5 rounded text-xs bg-blue-500/20 text-blue-400">
@@ -145,7 +145,7 @@ export function ExerciseDetailModal({
             </div>
             {exercise.secondaryMuscles.length > 0 && (
               <div>
-                <h3 className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">Secondary</h3>
+                <h3 className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">{t('exercise.secondaryMuscles')}</h3>
                 <div className="flex flex-wrap gap-1">
                   {exercise.secondaryMuscles.map(muscle => (
                     <span key={muscle} className="px-2 py-0.5 rounded text-xs bg-[var(--surface)]">
@@ -160,7 +160,7 @@ export function ExerciseDetailModal({
           {/* Instructions */}
           {exercise.instructions.length > 0 && (
             <div>
-              <h3 className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-2">Instructions</h3>
+              <h3 className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-2">{t('exercise.instructions')}</h3>
               <ol className="space-y-2">
                 {exercise.instructions.map((step, i) => (
                   <li key={i} className="flex gap-3 text-sm">
@@ -177,7 +177,7 @@ export function ExerciseDetailModal({
           {/* Status */}
           {inDay && (
             <div className="text-sm text-[var(--success)]">
-              Already in: {inDay}
+              {t('exercise.alreadyIn', { day: inDay })}
             </div>
           )}
 
@@ -191,7 +191,7 @@ export function ExerciseDetailModal({
                 }}
                 className="flex-1 py-3 text-sm border border-[var(--border)] rounded-lg hover:bg-[var(--surface)]"
               >
-                + Add to {activeDay}
+                {t('exercise.addToDay', { day: activeDay })}
               </button>
             )}
             {onDoNow && (
@@ -202,7 +202,7 @@ export function ExerciseDetailModal({
                 }}
                 className="flex-1 py-3 text-sm bg-[var(--text)] text-[var(--bg)] rounded-lg font-medium"
               >
-                ▶ Do Now
+                {t('exercise.doNow')}
               </button>
             )}
           </div>

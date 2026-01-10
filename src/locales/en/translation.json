@@ -85,7 +85,14 @@
     "otherExercises": "Other exercises",
     "howToPerform": "How to perform",
     "steps": "{{count}} steps",
-    "strengthMetrics": "Strength metrics"
+    "strengthMetrics": "Strength metrics",
+    "equipment": "Equipment",
+    "targetMuscles": "Target Muscles",
+    "secondaryMuscles": "Secondary",
+    "instructions": "Instructions",
+    "alreadyIn": "Already in: {{day}}",
+    "addToDay": "+ Add to {{day}}",
+    "doNow": "▶ Do Now"
   },
   "setInput": {
     "adjust": "Adjust",
