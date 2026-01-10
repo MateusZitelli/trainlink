@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 
 const SUPPORTED_LANGUAGES = [
   { code: 'en', name: 'English' },
-  // Add more languages as needed
+  { code: 'pt-BR', name: 'Português (Brasil)' },
 ]
 
 export function LanguageSwitcher() {
