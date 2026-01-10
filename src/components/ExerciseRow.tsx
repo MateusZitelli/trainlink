@@ -16,6 +16,7 @@ import {
   DifficultyButtons,
   ExerciseImage,
   E1rmDisplay,
+  DifficultyPredictor,
 } from "./shared";
 
 interface Exercise {
@@ -370,6 +371,17 @@ export function ExerciseRow({
       {prediction && (isKgPredicted || isRepsPredicted) && (
         <div className="px-3 py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm">
           <PredictionDisplay prediction={prediction} />
+        </div>
+      )}
+
+      {e1rmMetrics.current && kg && reps && (
+        <div className="px-3 py-2 bg-[var(--bg)] rounded-lg">
+          <DifficultyPredictor
+            e1rm={e1rmMetrics.current}
+            currentKg={parseFloat(kg) || 0}
+            currentReps={parseInt(reps) || 0}
+            onSelectDifficulty={(newKg) => setKg(newKg.toString())}
+          />
         </div>
       )}
 

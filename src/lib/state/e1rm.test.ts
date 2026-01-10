@@ -6,6 +6,9 @@ import {
   getFatigueMultiplier,
   calculateSmartE1rm,
   calculateE1rmMetrics,
+  predictDifficulty,
+  getWeightForDifficulty,
+  getDifficultyOptions,
 } from './e1rm'
 import type { HistoryEntry } from './types'
 
@@ -251,6 +254,83 @@ describe('e1RM calculations', () => {
       // e1RM should be based on 80kg × 8, not 40kg × 20
       // 40 × 20 would give ~67 e1RM, 80 × 8 gives ~101 e1RM
       expect(metrics.current).toBeGreaterThan(90)
+    })
+  })
+
+  describe('predictDifficulty', () => {
+    it('returns null for invalid inputs', () => {
+      expect(predictDifficulty(0, 100, 5)).toBeNull()
+      expect(predictDifficulty(120, 0, 5)).toBeNull()
+      expect(predictDifficulty(120, 100, 0)).toBeNull()
+    })
+
+    it('predicts warmup for very light weight', () => {
+      // e1RM = 120kg, doing 50kg × 5 = ~58kg e1RM = 48% intensity
+      expect(predictDifficulty(120, 50, 5)).toBe('warmup')
+    })
+
+    it('predicts easy for light weight', () => {
+      // e1RM = 120kg, doing 80kg × 5 = ~93kg e1RM = 78% intensity
+      expect(predictDifficulty(120, 80, 5)).toBe('easy')
+    })
+
+    it('predicts normal for moderate weight', () => {
+      // e1RM = 120kg, doing 90kg × 5 = ~105kg e1RM = 87.5% intensity
+      expect(predictDifficulty(120, 90, 5)).toBe('normal')
+    })
+
+    it('predicts hard for heavy weight', () => {
+      // e1RM = 120kg, doing 105kg × 5 = ~122kg e1RM = 102% intensity
+      expect(predictDifficulty(120, 105, 5)).toBe('hard')
+    })
+  })
+
+  describe('getWeightForDifficulty', () => {
+    it('returns 0 for invalid inputs', () => {
+      expect(getWeightForDifficulty(0, 5, 'normal')).toBe(0)
+      expect(getWeightForDifficulty(120, 0, 'normal')).toBe(0)
+    })
+
+    it('returns lighter weight for warmup', () => {
+      const warmupKg = getWeightForDifficulty(120, 5, 'warmup')
+      const hardKg = getWeightForDifficulty(120, 5, 'hard')
+      expect(warmupKg).toBeLessThan(hardKg)
+    })
+
+    it('returns progressively heavier weights', () => {
+      const warmup = getWeightForDifficulty(120, 5, 'warmup')
+      const easy = getWeightForDifficulty(120, 5, 'easy')
+      const normal = getWeightForDifficulty(120, 5, 'normal')
+      const hard = getWeightForDifficulty(120, 5, 'hard')
+
+      expect(warmup).toBeLessThan(easy)
+      expect(easy).toBeLessThan(normal)
+      expect(normal).toBeLessThan(hard)
+    })
+
+    it('rounds to nearest 0.5kg', () => {
+      const kg = getWeightForDifficulty(120, 5, 'normal')
+      expect(kg % 0.5).toBe(0)
+    })
+  })
+
+  describe('getDifficultyOptions', () => {
+    it('returns empty array for invalid inputs', () => {
+      expect(getDifficultyOptions(0, 5)).toEqual([])
+      expect(getDifficultyOptions(120, 0)).toEqual([])
+    })
+
+    it('returns all four difficulty options', () => {
+      const options = getDifficultyOptions(120, 5)
+      expect(options).toHaveLength(4)
+      expect(options.map(o => o.difficulty)).toEqual(['warmup', 'easy', 'normal', 'hard'])
+    })
+
+    it('includes weight for each difficulty', () => {
+      const options = getDifficultyOptions(120, 5)
+      options.forEach(option => {
+        expect(option.kg).toBeGreaterThan(0)
+      })
     })
   })
 })

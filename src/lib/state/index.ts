@@ -40,10 +40,13 @@ export {
   getExercisePatternFromLastSession,
 } from './predictions'
 
-export type { E1rmMetrics, WeightSuggestion } from './e1rm'
+export type { E1rmMetrics, WeightSuggestion, PredictedDifficulty } from './e1rm'
 
 export {
   calculateE1rmMetrics,
   calculateSmartE1rm,
   baseE1rm,
+  predictDifficulty,
+  getWeightForDifficulty,
+  getDifficultyOptions,
 } from './e1rm'

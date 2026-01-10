@@ -17,6 +17,25 @@ export interface WeightSuggestion {
   description: string
 }
 
+// Predicted difficulty based on intensity relative to e1RM
+export type PredictedDifficulty = 'warmup' | 'easy' | 'normal' | 'hard'
+
+// Intensity thresholds for difficulty prediction
+const DIFFICULTY_THRESHOLDS = {
+  warmup: 0.65,  // <65% = warmup
+  easy: 0.82,    // 65-82% = easy
+  normal: 0.92,  // 82-92% = normal
+  // >92% = hard
+}
+
+// Target intensities for each difficulty goal
+const TARGET_INTENSITIES: Record<PredictedDifficulty, number> = {
+  warmup: 0.55,
+  easy: 0.75,
+  normal: 0.87,
+  hard: 0.95,
+}
+
 interface SmartE1rmInput {
   kg: number
   reps: number
@@ -221,4 +240,53 @@ export function calculateE1rmMetrics(history: HistoryEntry[], exId: string): E1r
     trend,
     suggestedWeights,
   }
+}
+
+// Predict difficulty based on weight/reps relative to e1RM
+export function predictDifficulty(
+  e1rm: number,
+  kg: number,
+  reps: number
+): PredictedDifficulty | null {
+  if (e1rm <= 0 || kg <= 0 || reps <= 0) return null
+
+  const setE1rm = baseE1rm(kg, reps)
+  const intensity = setE1rm / e1rm
+
+  if (intensity < DIFFICULTY_THRESHOLDS.warmup) return 'warmup'
+  if (intensity < DIFFICULTY_THRESHOLDS.easy) return 'easy'
+  if (intensity < DIFFICULTY_THRESHOLDS.normal) return 'normal'
+  return 'hard'
+}
+
+// Get weight for a target difficulty and rep count
+export function getWeightForDifficulty(
+  e1rm: number,
+  reps: number,
+  targetDifficulty: PredictedDifficulty
+): number {
+  if (e1rm <= 0 || reps <= 0) return 0
+
+  const targetIntensity = TARGET_INTENSITIES[targetDifficulty]
+  // Target e1RM = current e1RM × intensity
+  // weight = targetE1rm / (1 + reps/30)
+  const targetE1rm = e1rm * targetIntensity
+  const weight = targetE1rm / (1 + reps / 30)
+
+  // Round to nearest 0.5kg
+  return Math.round(weight * 2) / 2
+}
+
+// Get all difficulty options with weights for given reps
+export function getDifficultyOptions(
+  e1rm: number,
+  reps: number
+): { difficulty: PredictedDifficulty; kg: number }[] {
+  if (e1rm <= 0 || reps <= 0) return []
+
+  const difficulties: PredictedDifficulty[] = ['warmup', 'easy', 'normal', 'hard']
+  return difficulties.map(difficulty => ({
+    difficulty,
+    kg: getWeightForDifficulty(e1rm, reps, difficulty),
+  }))
 }
