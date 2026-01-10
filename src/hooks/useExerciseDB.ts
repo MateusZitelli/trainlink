@@ -354,6 +354,7 @@ const fuseOptions: IFuseOptions<Exercise> = {
     { name: 'force', weight: 0.8 },
     { name: 'mechanic', weight: 0.8 },
     { name: 'level', weight: 0.5 },
+    { name: 'instructions', weight: 0.3 },
   ],
   threshold: 0.4,
   includeScore: true,
