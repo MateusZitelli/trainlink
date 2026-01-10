@@ -28,8 +28,8 @@ function getCacheKey(base: string): string {
   return base + langSuffix
 }
 
-const CACHE_KEY_BASE = 'workout-exercise-cache-v4'
-const DB_CACHE_KEY_BASE = 'workout-free-exercise-db-v3'
+const CACHE_KEY_BASE = 'workout-exercise-cache-v5'
+const DB_CACHE_KEY_BASE = 'workout-free-exercise-db-v4'
 const FILTER_OPTIONS_KEY = 'workout-filter-options-v2'
 
 // Filter options - will be populated from data
@@ -161,8 +161,9 @@ function buildSearchTerms(exercise: Exercise, nameEn?: string): string[] {
   // Add muscles (English + translated)
   for (const muscle of exercise.targetMuscles) {
     terms.push(muscle)
-    if (muscleTranslations[muscle]) {
-      terms.push(muscleTranslations[muscle])
+    const translated = muscleTranslations[muscle]
+    if (translated) {
+      terms.push(translated)
     }
   }
   for (const muscle of exercise.secondaryMuscles) {
