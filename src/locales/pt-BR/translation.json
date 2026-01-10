@@ -126,5 +126,37 @@
   },
   "toast": {
     "dismiss": "Dispensar"
+  },
+  "templates": {
+    "push_beginner_name": "Dia de Empurrar",
+    "push_beginner_desc": "Treino de peito, ombros e tríceps",
+    "push_intermediate_name": "Dia de Empurrar",
+    "push_intermediate_desc": "Peito, ombros e tríceps com mais volume",
+    "pull_beginner_name": "Dia de Puxar",
+    "pull_beginner_desc": "Treino de costas e bíceps",
+    "pull_intermediate_name": "Dia de Puxar",
+    "pull_intermediate_desc": "Costas e bíceps com mais volume",
+    "legs_beginner_name": "Dia de Pernas",
+    "legs_beginner_desc": "Quadríceps, posteriores e panturrilhas",
+    "legs_intermediate_name": "Dia de Pernas",
+    "legs_intermediate_desc": "Desenvolvimento completo de pernas",
+    "fullbody_beginner_name": "Corpo Inteiro",
+    "fullbody_beginner_desc": "Treino completo para iniciantes",
+    "fullbody_intermediate_name": "Corpo Inteiro",
+    "fullbody_intermediate_desc": "Rotina balanceada de corpo inteiro",
+    "ppl_classic_name": "PPL - Empurrar Puxar Pernas",
+    "ppl_classic_desc": "Divisão clássica de 6 dias com dias de empurrar, puxar e pernas",
+    "ppl_classic_day0_name": "Empurrar A",
+    "ppl_classic_day0_desc": "Dia de empurrar focado em peito e ombros",
+    "ppl_classic_day1_name": "Puxar A",
+    "ppl_classic_day1_desc": "Dia de puxar focado em levantamento terra",
+    "ppl_classic_day2_name": "Pernas A",
+    "ppl_classic_day2_desc": "Dia de pernas focado em agachamento",
+    "ppl_classic_day3_name": "Empurrar B",
+    "ppl_classic_day3_desc": "Dia de empurrar focado em ombros",
+    "ppl_classic_day4_name": "Puxar B",
+    "ppl_classic_day4_desc": "Dia de puxar focado em barra fixa",
+    "ppl_classic_day5_name": "Pernas B",
+    "ppl_classic_day5_desc": "Dia de pernas focado em agachamento frontal"
   }
 }

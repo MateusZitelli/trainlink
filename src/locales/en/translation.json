@@ -126,5 +126,37 @@
   },
   "toast": {
     "dismiss": "Dismiss"
+  },
+  "templates": {
+    "push_beginner_name": "Push Day",
+    "push_beginner_desc": "Chest, shoulders, and triceps workout",
+    "push_intermediate_name": "Push Day",
+    "push_intermediate_desc": "Chest, shoulders, and triceps with more volume",
+    "pull_beginner_name": "Pull Day",
+    "pull_beginner_desc": "Back and biceps workout",
+    "pull_intermediate_name": "Pull Day",
+    "pull_intermediate_desc": "Back and biceps with more volume",
+    "legs_beginner_name": "Leg Day",
+    "legs_beginner_desc": "Quadriceps, hamstrings, and calves",
+    "legs_intermediate_name": "Leg Day",
+    "legs_intermediate_desc": "Complete leg development",
+    "fullbody_beginner_name": "Full Body",
+    "fullbody_beginner_desc": "Complete body workout for beginners",
+    "fullbody_intermediate_name": "Full Body",
+    "fullbody_intermediate_desc": "Balanced full body routine",
+    "ppl_classic_name": "PPL - Push Pull Legs",
+    "ppl_classic_desc": "Classic 6-day bodybuilding split with push, pull, and leg days",
+    "ppl_classic_day0_name": "Push A",
+    "ppl_classic_day0_desc": "Chest and shoulder focused push day",
+    "ppl_classic_day1_name": "Pull A",
+    "ppl_classic_day1_desc": "Deadlift focused pull day",
+    "ppl_classic_day2_name": "Legs A",
+    "ppl_classic_day2_desc": "Squat focused leg day",
+    "ppl_classic_day3_name": "Push B",
+    "ppl_classic_day3_desc": "Shoulder focused push day",
+    "ppl_classic_day4_name": "Pull B",
+    "ppl_classic_day4_desc": "Pull-up focused pull day",
+    "ppl_classic_day5_name": "Legs B",
+    "ppl_classic_day5_desc": "Front squat focused leg day"
   }
 }

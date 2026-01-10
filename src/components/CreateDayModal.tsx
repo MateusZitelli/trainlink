@@ -25,6 +25,12 @@ function DifficultyBadge({ difficulty }: { difficulty: DayDifficulty }) {
   )
 }
 
+// Simple translation helper - returns original if no translation found
+function translateTemplate(t: any, key: string, fallback: string): string {
+  const translated = t(`templates.${key}`, { defaultValue: '' })
+  return translated || fallback
+}
+
 function DayTemplateCard({
   template,
   exercises,
@@ -35,16 +41,21 @@ function DayTemplateCard({
   onSelect: () => void
 }) {
   const { t } = useTranslation()
+
+  // Generate translation keys from template ID
+  const nameKey = template.id.replace(/-/g, '_') + '_name'
+  const descKey = template.id.replace(/-/g, '_') + '_desc'
+
   return (
     <button
       onClick={onSelect}
       className="w-full p-4 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-left hover:border-[var(--text-muted)] transition-colors"
     >
       <div className="flex items-start justify-between gap-2 mb-2">
-        <h3 className="font-medium">{template.name}</h3>
+        <h3 className="font-medium">{translateTemplate(t, nameKey, template.name)}</h3>
         <DifficultyBadge difficulty={template.difficulty} />
       </div>
-      <p className="text-sm text-[var(--text-muted)] mb-3">{template.description}</p>
+      <p className="text-sm text-[var(--text-muted)] mb-3">{translateTemplate(t, descKey, template.description)}</p>
       <div className="flex items-center justify-between">
         <ExerciseImageStack exercises={exercises} max={5} />
         <span className="text-xs text-[var(--text-muted)]">
@@ -65,16 +76,21 @@ function PackCard({
   onSelect: () => void
 }) {
   const { t } = useTranslation()
+
+  // Generate translation keys from pack ID
+  const nameKey = pack.id.replace(/-/g, '_') + '_name'
+  const descKey = pack.id.replace(/-/g, '_') + '_desc'
+
   return (
     <button
       onClick={onSelect}
       className="w-full p-4 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-left hover:border-[var(--text-muted)] transition-colors"
     >
       <div className="flex items-start justify-between gap-2 mb-2">
-        <h3 className="font-medium">{pack.name}</h3>
+        <h3 className="font-medium">{translateTemplate(t, nameKey, pack.name)}</h3>
         <DifficultyBadge difficulty={pack.difficulty} />
       </div>
-      <p className="text-sm text-[var(--text-muted)] mb-3">{pack.description}</p>
+      <p className="text-sm text-[var(--text-muted)] mb-3">{translateTemplate(t, descKey, pack.description)}</p>
       <div className="flex items-center justify-between">
         <ExerciseImageStack exercises={exercises} max={6} />
         <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
@@ -87,12 +103,16 @@ function PackCard({
   )
 }
 
+// Convert English exercise name to ID (spaces to underscores)
+function nameToId(name: string): string {
+  return name.replace(/ /g, '_')
+}
+
 function resolveExerciseIds(names: string[], allExercises: Exercise[]): string[] {
   return names
     .map(name => {
-      const match = allExercises.find(
-        ex => ex.name.toLowerCase() === name.toLowerCase()
-      )
+      const exerciseId = nameToId(name)
+      const match = allExercises.find(ex => ex.exerciseId === exerciseId)
       return match?.exerciseId ?? null
     })
     .filter((id): id is string => id !== null)
@@ -100,7 +120,10 @@ function resolveExerciseIds(names: string[], allExercises: Exercise[]): string[]
 
 function resolveExercises(names: string[], allExercises: Exercise[]): Exercise[] {
   return names
-    .map(name => allExercises.find(ex => ex.name.toLowerCase() === name.toLowerCase()))
+    .map(name => {
+      const exerciseId = nameToId(name)
+      return allExercises.find(ex => ex.exerciseId === exerciseId)
+    })
     .filter((ex): ex is Exercise => ex !== undefined)
 }
 
@@ -146,7 +169,7 @@ export function CreateDayModal({
   existingDayNames,
 }: CreateDayModalProps) {
   const { t } = useTranslation()
-  const [activeTab, setActiveTab] = useState<Tab>('days')
+  const [activeTab, setActiveTab] = useState<Tab>('packs')
   const [difficultyFilter, setDifficultyFilter] = useState<DayDifficulty | 'all'>('all')
   const [blankDayName, setBlankDayName] = useState('')
   const [selectedPack, setSelectedPack] = useState<Pack | null>(null)
@@ -227,6 +250,9 @@ export function CreateDayModal({
 
   // Pack detail view
   if (selectedPack) {
+    const packNameKey = selectedPack.id.replace(/-/g, '_') + '_name'
+    const packDescKey = selectedPack.id.replace(/-/g, '_') + '_desc'
+
     return (
       <div
         className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center"
@@ -258,10 +284,10 @@ export function CreateDayModal({
           <div className="p-4 space-y-4">
             <div>
               <div className="flex items-start justify-between gap-2 mb-2">
-                <h2 className="text-xl font-bold">{selectedPack.name}</h2>
+                <h2 className="text-xl font-bold">{translateTemplate(t, packNameKey, selectedPack.name)}</h2>
                 <DifficultyBadge difficulty={selectedPack.difficulty} />
               </div>
-              <p className="text-[var(--text-muted)]">{selectedPack.description}</p>
+              <p className="text-[var(--text-muted)]">{translateTemplate(t, packDescKey, selectedPack.description)}</p>
               <div className="flex items-center gap-3 mt-2 text-sm text-[var(--text-muted)]">
                 <span>{selectedPack.frequency}</span>
                 <span>•</span>
@@ -277,13 +303,17 @@ export function CreateDayModal({
               <div className="space-y-3">
                 {selectedPack.days.map((day, i) => {
                   const dayExercises = resolveExercises(day.exerciseNames, allExercises)
+                  // Generate translation keys for pack day
+                  const dayNameKey = selectedPack.id.replace(/-/g, '_') + '_day' + i + '_name'
+                  const dayDescKey = selectedPack.id.replace(/-/g, '_') + '_day' + i + '_desc'
+
                   return (
                     <div
                       key={i}
                       className="p-3 bg-[var(--surface)] rounded-lg"
                     >
-                      <h4 className="font-medium mb-1">{day.name}</h4>
-                      <p className="text-sm text-[var(--text-muted)] mb-3">{day.description}</p>
+                      <h4 className="font-medium mb-1">{translateTemplate(t, dayNameKey, day.name)}</h4>
+                      <p className="text-sm text-[var(--text-muted)] mb-3">{translateTemplate(t, dayDescKey, day.description)}</p>
                       <div className="space-y-2">
                         {dayExercises.slice(0, 4).map(ex => (
                           <div key={ex.exerciseId} className="flex items-center gap-2">
