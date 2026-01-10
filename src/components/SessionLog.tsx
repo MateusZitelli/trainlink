@@ -565,7 +565,7 @@ export function SessionLog({
     )
   }
 
-  const renderCycleCard = (circuit: CircuitGroup, circuitIdx: number, totalCircuits: number, isDraggingThis: boolean) => {
+  const renderCycleCard = (circuit: CircuitGroup, circuitIdx: number, totalCircuits: number, isDraggingThis: boolean, dragHandleProps?: any) => {
     const allSets = circuit.rounds.flat()
     const lastSet = allSets[allSets.length - 1]
     const hasRestAfter = lastSet?.rest && circuitIdx < totalCircuits - 1
@@ -582,7 +582,7 @@ export function SessionLog({
             <div className="font-medium text-sm mb-2 flex items-center gap-2">
               <span className="text-[var(--success)]">⟳</span>
               <span>{exerciseNames.join(' + ')}</span>
-              <span className="ml-auto text-[var(--text-muted)] select-none cursor-grab">⋮⋮</span>
+              <span {...dragHandleProps} className="ml-auto text-[var(--text-muted)] select-none cursor-grab active:cursor-grabbing p-1 -m-1">⋮⋮</span>
             </div>
             <div className="flex flex-wrap items-center gap-1">
               {circuit.rounds.map((round, roundIdx) => (
@@ -611,7 +611,7 @@ export function SessionLog({
           <div className={`bg-[var(--surface)] rounded-lg p-3 ${isDraggingThis ? 'ring-2 ring-blue-500' : ''}`}>
             <div className="font-medium text-sm mb-2 flex items-center gap-2">
               <span>{name}</span>
-              <span className="ml-auto text-[var(--text-muted)] select-none cursor-grab">⋮⋮</span>
+              <span {...dragHandleProps} className="ml-auto text-[var(--text-muted)] select-none cursor-grab active:cursor-grabbing p-1 -m-1">⋮⋮</span>
             </div>
             <div className="flex flex-wrap items-center gap-1">
               {allSets.map((set, i) => renderSetButton(set, i, allSets.length))}
@@ -772,14 +772,14 @@ export function SessionLog({
                         <div
                           ref={dragProvided.innerRef}
                           {...dragProvided.draggableProps}
-                          {...dragProvided.dragHandleProps}
                           className={`px-4 pt-2 ${dragSnapshot.isDragging ? 'opacity-90 shadow-2xl z-50 bg-[var(--bg)]' : ''}`}
                         >
                           {renderCycleCard(
                             item.circuit!,
                             item.circuitIdxInSession!,
                             item.totalCircuitsInSession!,
-                            dragSnapshot.isDragging
+                            dragSnapshot.isDragging,
+                            dragProvided.dragHandleProps
                           )}
                         </div>
                       )}
