@@ -1,73 +1,18 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import Fuse, { type IFuseOptions } from 'fuse.js'
 import i18n from '../lib/i18n'
+import {
+  muscleTranslations,
+  equipmentTranslations,
+  categoryTranslations,
+  forceTranslations,
+  mechanicTranslations,
+  levelTranslations,
+} from '../lib/searchTranslations'
 
 const EXERCISES_URL_EN = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json'
 const EXERCISES_URL_PT_BR = `${import.meta.env.BASE_URL}data/exercises-pt-br.json`
 const IMAGE_BASE_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'
-
-// Translation maps for Portuguese search terms
-const muscleTranslations: Record<string, string> = {
-  'abdominals': 'Abdominais',
-  'abductors': 'Abdutores',
-  'adductors': 'Adutores',
-  'biceps': 'Bíceps',
-  'calves': 'Panturrilhas',
-  'chest': 'Peito',
-  'forearms': 'Antebraços',
-  'glutes': 'Glúteos',
-  'hamstrings': 'Posteriores de Coxa',
-  'lats': 'Dorsais',
-  'lower back': 'Lombar',
-  'middle back': 'Costas Médias',
-  'neck': 'Pescoço',
-  'quadriceps': 'Quadríceps',
-  'shoulders': 'Ombros',
-  'traps': 'Trapézios',
-  'triceps': 'Tríceps',
-}
-
-const equipmentTranslations: Record<string, string> = {
-  'bands': 'Faixas Elásticas',
-  'barbell': 'Barra',
-  'body only': 'Peso Corporal',
-  'cable': 'Cabo',
-  'dumbbell': 'Halter',
-  'e-z curl bar': 'Barra W',
-  'exercise ball': 'Bola de Exercício',
-  'foam roll': 'Rolo de Espuma',
-  'kettlebells': 'Kettlebells',
-  'machine': 'Máquina',
-  'medicine ball': 'Bola Medicinal',
-  'other': 'Outro',
-}
-
-const categoryTranslations: Record<string, string> = {
-  'cardio': 'Cardio',
-  'olympic weightlifting': 'Levantamento Olímpico',
-  'plyometrics': 'Pliometria',
-  'powerlifting': 'Powerlifting',
-  'strength': 'Força',
-  'stretching': 'Alongamento',
-  'strongman': 'Strongman',
-}
-
-const forceTranslations: Record<string, string> = {
-  'pull': 'Puxar',
-  'push': 'Empurrar',
-  'static': 'Estático',
-}
-
-const mechanicTranslations: Record<string, string> = {
-  'compound': 'Composto',
-  'isolation': 'Isolamento',
-}
-
-const levelTranslations: Record<string, string> = {
-  'beginner': 'Iniciante',
-  'intermediate': 'Intermediário',
-  'expert': 'Avançado',
-}
 
 function getExercisesUrl(): string {
   const lang = i18n.language
