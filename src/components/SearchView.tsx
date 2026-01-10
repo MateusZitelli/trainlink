@@ -7,6 +7,14 @@ import { FilterPanel } from './FilterPanel'
 import { ExerciseDetailModal } from './ExerciseDetailModal'
 import { useImageRotation } from '../hooks/useImageRotation'
 import { LEVEL_COLORS } from '../lib/utils'
+import {
+  muscleTranslations,
+  equipmentTranslations,
+  categoryTranslations,
+  forceTranslations,
+  mechanicTranslations,
+  levelTranslations,
+} from '../lib/searchTranslations'
 
 interface SearchViewProps {
   activeDay?: string
@@ -215,6 +223,27 @@ interface SearchResultCardProps {
   activeDay?: string
 }
 
+// Helper to check if matched value corresponds to a field value (English or Portuguese)
+function matchesFieldValue(
+  matchedValue: string,
+  fieldValue: string,
+  translations: Record<string, string>
+): boolean {
+  const matchedLower = matchedValue.toLowerCase()
+  const fieldLower = fieldValue.toLowerCase()
+
+  // Check if matched value contains the English term
+  if (matchedLower.includes(fieldLower)) return true
+
+  // Check if matched value contains the Portuguese translation
+  const portugueseTranslation = translations[fieldValue]
+  if (portugueseTranslation && matchedLower.includes(portugueseTranslation.toLowerCase())) {
+    return true
+  }
+
+  return false
+}
+
 // Check if a field was matched (including matches via searchTerms)
 function isFieldMatched(matches: SearchMatch[], fieldKey: string, exercise: Exercise): boolean {
   return matches.some(m => {
@@ -227,37 +256,37 @@ function isFieldMatched(matches: SearchMatch[], fieldKey: string, exercise: Exer
 
     // Check if searchTerms match relates to this field
     if (m.key === 'searchTerms' && m.value) {
-      const matchedValue = m.value.toLowerCase()
-
       // Check muscles
       if (fieldKey === 'targetMuscles' || fieldKey === 'secondaryMuscles') {
         const allMuscles = [...exercise.targetMuscles, ...exercise.secondaryMuscles]
-        if (allMuscles.some(muscle => matchedValue.includes(muscle.toLowerCase()))) return true
+        if (allMuscles.some(muscle => matchesFieldValue(m.value!, muscle, muscleTranslations))) {
+          return true
+        }
       }
 
       // Check equipment
       if (fieldKey === 'equipment' && exercise.equipment) {
-        if (matchedValue.includes(exercise.equipment.toLowerCase())) return true
+        if (matchesFieldValue(m.value, exercise.equipment, equipmentTranslations)) return true
       }
 
       // Check category
       if (fieldKey === 'category') {
-        if (matchedValue.includes(exercise.category.toLowerCase())) return true
+        if (matchesFieldValue(m.value, exercise.category, categoryTranslations)) return true
       }
 
       // Check force
       if (fieldKey === 'force' && exercise.force) {
-        if (matchedValue.includes(exercise.force.toLowerCase())) return true
+        if (matchesFieldValue(m.value, exercise.force, forceTranslations)) return true
       }
 
       // Check mechanic
       if (fieldKey === 'mechanic' && exercise.mechanic) {
-        if (matchedValue.includes(exercise.mechanic.toLowerCase())) return true
+        if (matchesFieldValue(m.value, exercise.mechanic, mechanicTranslations)) return true
       }
 
       // Check level
       if (fieldKey === 'level') {
-        if (matchedValue.includes(exercise.level.toLowerCase())) return true
+        if (matchesFieldValue(m.value, exercise.level, levelTranslations)) return true
       }
     }
 
