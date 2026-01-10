@@ -6,7 +6,7 @@ import type {
 } from "../lib/state";
 import { calculateE1rmMetrics, getLastSessionSets } from "../lib/state";
 import { useState, useEffect, useMemo } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { useImageRotation } from "../hooks/useImageRotation";
 import { useElapsedTimer } from "../hooks/useElapsedTimer";
 import {
@@ -16,6 +16,7 @@ import {
   E1rmDisplay,
   ProgressiveSetInput,
 } from "./shared";
+import { springs } from "../lib/animations";
 
 interface Exercise {
   exerciseId: string;
@@ -153,9 +154,22 @@ export function ExerciseRow({
   // Collapsed view
   if (!isSelected) {
     return (
-      <div className={`rounded-lg ${isNextExercise ? "bg-blue-500/5" : ""}`}>
+      <motion.div
+        className={`rounded-lg ${isNextExercise ? "bg-blue-500/5" : ""}`}
+        whileHover={{ scale: 1.01, backgroundColor: "var(--surface-hover)" }}
+        whileTap={{ scale: 0.99 }}
+        transition={springs.snappy}
+      >
         <div className="flex items-center gap-2 p-3 cursor-pointer" onClick={onClick}>
-          {isNextExercise && <span className="text-lg text-blue-500">→</span>}
+          {isNextExercise && (
+            <motion.span
+              className="text-lg text-blue-500"
+              animate={{ x: [0, 4, 0] }}
+              transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+            >
+              →
+            </motion.span>
+          )}
 
           <ExerciseImage imageUrls={imageUrls} imageIndex={imageIndex} name={name} size="sm" />
 
@@ -179,61 +193,97 @@ export function ExerciseRow({
             )}
           </div>
 
-          {isActive ? (
-            <motion.button
-              onClick={handleQuickFinish}
-              className="p-2 bg-[var(--success)] text-white rounded-lg shrink-0"
-              aria-label="Finish set"
-              whileTap={{ scale: 0.9 }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </motion.button>
-          ) : hasParams ? (
-            <motion.button
-              onClick={handleQuickStart}
-              className="p-2 bg-[var(--text)] text-[var(--bg)] rounded-lg shrink-0"
-              aria-label="Start set"
-              whileTap={{ scale: 0.9 }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                <polygon points="5 3 19 12 5 21 5 3" />
-              </svg>
-            </motion.button>
-          ) : null}
+          <AnimatePresence mode="wait">
+            {isActive ? (
+              <motion.button
+                key="finish"
+                onClick={handleQuickFinish}
+                className="p-2 bg-[var(--success)] text-white rounded-lg shrink-0"
+                aria-label="Finish set"
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                exit={{ scale: 0, rotate: 180 }}
+                whileTap={{ scale: 0.85 }}
+                transition={springs.bouncy}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </motion.button>
+            ) : hasParams ? (
+              <motion.button
+                key="start"
+                onClick={handleQuickStart}
+                className="p-2 bg-[var(--text)] text-[var(--bg)] rounded-lg shrink-0"
+                aria-label="Start set"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.85 }}
+                transition={springs.bouncy}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+              </motion.button>
+            ) : null}
+          </AnimatePresence>
 
           {onAddToPlan && (
             <motion.button
               onClick={(e) => { e.stopPropagation(); onAddToPlan(); }}
               className="p-2 text-[var(--text-muted)] hover:text-[var(--success)]"
               aria-label="Add to plan"
+              whileHover={{ scale: 1.2, rotate: 90 }}
               whileTap={{ scale: 0.9 }}
+              transition={springs.bouncy}
             >
               +
             </motion.button>
           )}
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   // Expanded view - using ProgressiveSetInput for both active and inactive states
   return (
-    <div className="bg-[var(--surface)] rounded-lg p-4 space-y-4">
-      {showFullImage && imageUrls.length > 0 && (
-        <motion.div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
-          onClick={() => setShowFullImage(false)}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <img src={imageUrls[imageIndex]} alt={name} className="max-w-full max-h-full object-contain" />
-        </motion.div>
-      )}
+    <motion.div
+      className="bg-[var(--surface)] rounded-lg p-4 space-y-4"
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={springs.snappy}
+    >
+      <AnimatePresence>
+        {showFullImage && imageUrls.length > 0 && (
+          <motion.div
+            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+            onClick={() => setShowFullImage(false)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.img
+              src={imageUrls[imageIndex]}
+              alt={name}
+              className="max-w-full max-h-full object-contain"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={springs.bouncy}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <div className="flex gap-4 cursor-pointer" onClick={onClick}>
+      <motion.div
+        className="flex gap-4 cursor-pointer"
+        onClick={onClick}
+        initial={{ opacity: 0, x: -10 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ ...springs.snappy, delay: 0.05 }}
+      >
         <ExerciseImage
           imageUrls={imageUrls}
           imageIndex={imageIndex}
@@ -250,32 +300,56 @@ export function ExerciseRow({
 
         <div className="flex self-start">
           {onAddToPlan && (
-            <button
+            <motion.button
               onClick={(e) => { e.stopPropagation(); onAddToPlan(); }}
               className="p-2 text-[var(--text-muted)] hover:text-[var(--success)]"
               aria-label="Add to plan"
+              whileHover={{ scale: 1.2, rotate: 90 }}
+              whileTap={{ scale: 0.9 }}
+              transition={springs.bouncy}
             >
               +
-            </button>
+            </motion.button>
           )}
           {onRemove && (
-            <button
+            <motion.button
               onClick={(e) => { e.stopPropagation(); onRemove(); }}
               className="p-2 text-[var(--text-muted)] hover:text-red-500"
               aria-label="Remove exercise"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="3 6 5 6 21 6" />
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
               </svg>
-            </button>
+            </motion.button>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {exercise?.instructions && exercise.instructions.length > 0 && (
-        <details className="bg-[var(--bg)] rounded-lg">
-          <summary className="px-3 py-2 text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text)]">
+        <motion.details
+          className="bg-[var(--bg)] rounded-lg group"
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springs.snappy, delay: 0.1 }}
+        >
+          <summary className="px-3 py-2 text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text)] flex items-center gap-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="transition-transform group-open:rotate-90"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
             How to perform ({exercise.instructions.length} steps)
           </summary>
           <ol className="px-3 pb-3 space-y-2">
@@ -288,11 +362,16 @@ export function ExerciseRow({
               </li>
             ))}
           </ol>
-        </details>
+        </motion.details>
       )}
 
       {e1rmMetrics.current && (
-        <details className="bg-[var(--bg)] rounded-lg group">
+        <motion.details
+          className="bg-[var(--bg)] rounded-lg group"
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springs.snappy, delay: 0.15 }}
+        >
           <summary className="px-3 py-2 text-sm cursor-pointer hover:text-[var(--text)] flex items-center justify-between list-none">
             <span className="flex items-center gap-2 text-[var(--text-muted)]">
               <svg
@@ -322,13 +401,18 @@ export function ExerciseRow({
               }}
             />
           </div>
-        </details>
+        </motion.details>
       )}
 
       {prediction && (isKgPredicted || isRepsPredicted) && (
-        <div className="px-3 py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm">
+        <motion.div
+          className="px-3 py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ ...springs.snappy, delay: 0.2 }}
+        >
           <PredictionDisplay prediction={prediction} />
-        </div>
+        </motion.div>
       )}
 
       <ProgressiveSetInput
@@ -346,6 +430,6 @@ export function ExerciseRow({
         onStart={handleStart}
         onFinish={handleFinish}
       />
-    </div>
+    </motion.div>
   );
 }
