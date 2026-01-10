@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import i18n from '../lib/i18n'
 
 const EXERCISES_URL_EN = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json'
-const EXERCISES_URL_PT_BR = '/data/exercises-pt-br.json'
+const EXERCISES_URL_PT_BR = `${import.meta.env.BASE_URL}data/exercises-pt-br.json`
 const IMAGE_BASE_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'
 
 function getExercisesUrl(): string {
