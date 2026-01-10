@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import type { Exercise } from '../hooks/useExerciseDB'
 import { useImageRotation } from '../hooks/useImageRotation'
 import { LEVEL_COLORS_STYLED } from '../lib/utils'
+import { useTranslation } from 'react-i18next'
 
 interface ExerciseDetailModalProps {
   exercise: Exercise
@@ -20,6 +21,7 @@ export function ExerciseDetailModal({
   activeDay,
   inDay,
 }: ExerciseDetailModalProps) {
+  const { t } = useTranslation()
   const imageIndex = useImageRotation(exercise.imageUrls)
 
   // Close on escape
@@ -30,6 +32,10 @@ export function ExerciseDetailModal({
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)
   }, [onClose])
+
+  const translateValue = (type: string, value: string): string => {
+    return t(`${type}.${value}`, { ns: 'common', defaultValue: value })
+  }
 
   const categoryIcons: Record<string, string> = {
     strength: '💪',
@@ -93,25 +99,25 @@ export function ExerciseDetailModal({
             <div className="flex flex-wrap gap-2 mt-2">
               {/* Level badge */}
               <span className={`px-2 py-0.5 rounded text-xs font-medium ${LEVEL_COLORS_STYLED[exercise.level] ?? 'bg-[var(--surface)]'}`}>
-                {exercise.level}
+                {translateValue('exerciseLevel', exercise.level)}
               </span>
 
               {/* Category */}
               <span className="px-2 py-0.5 rounded text-xs bg-[var(--surface)]">
-                {categoryIcons[exercise.category] ?? '🏃'} {exercise.category}
+                {categoryIcons[exercise.category] ?? '🏃'} {translateValue('exerciseCategory', exercise.category)}
               </span>
 
               {/* Force */}
               {exercise.force && (
                 <span className="px-2 py-0.5 rounded text-xs bg-[var(--surface)]">
-                  {exercise.force === 'push' ? '⬆️' : exercise.force === 'pull' ? '⬇️' : '⏸️'} {exercise.force}
+                  {exercise.force === 'push' ? '⬆️' : exercise.force === 'pull' ? '⬇️' : '⏸️'} {translateValue('exerciseForce', exercise.force)}
                 </span>
               )}
 
               {/* Mechanic */}
               {exercise.mechanic && (
                 <span className="px-2 py-0.5 rounded text-xs bg-[var(--surface)]">
-                  {exercise.mechanic === 'compound' ? '🔗' : '🎯'} {exercise.mechanic}
+                  {exercise.mechanic === 'compound' ? '🔗' : '🎯'} {translateValue('exerciseMechanic', exercise.mechanic)}
                 </span>
               )}
             </div>
@@ -121,7 +127,7 @@ export function ExerciseDetailModal({
           {exercise.equipment && (
             <div>
               <h3 className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">Equipment</h3>
-              <p className="text-sm">{exercise.equipment}</p>
+              <p className="text-sm">{translateValue('exerciseEquipment', exercise.equipment)}</p>
             </div>
           )}
 
@@ -132,7 +138,7 @@ export function ExerciseDetailModal({
               <div className="flex flex-wrap gap-1">
                 {exercise.targetMuscles.map(muscle => (
                   <span key={muscle} className="px-2 py-0.5 rounded text-xs bg-blue-500/20 text-blue-400">
-                    {muscle}
+                    {translateValue('muscle', muscle)}
                   </span>
                 ))}
               </div>
@@ -143,7 +149,7 @@ export function ExerciseDetailModal({
                 <div className="flex flex-wrap gap-1">
                   {exercise.secondaryMuscles.map(muscle => (
                     <span key={muscle} className="px-2 py-0.5 rounded text-xs bg-[var(--surface)]">
-                      {muscle}
+                      {translateValue('muscle', muscle)}
                     </span>
                   ))}
                 </div>

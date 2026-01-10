@@ -4,6 +4,7 @@ import type { ShareSessionData } from '../lib/url'
 import { useExerciseDB } from '../hooks/useExerciseDB'
 import { useImageRotation } from '../hooks/useImageRotation'
 import { formatDuration, formatRest } from '../lib/utils'
+import { useTranslation } from 'react-i18next'
 
 interface Exercise {
   name: string
@@ -394,10 +395,17 @@ interface ExerciseCardProps {
 }
 
 function ExerciseCard({ exId, sets, getExercise }: ExerciseCardProps) {
+  const { t } = useTranslation()
   const exercise = getExercise(exId)
   const name = exercise?.name ?? exId
-  const muscles = exercise?.targetMuscles?.slice(0, 2).join(', ') ?? ''
-  const equipment = exercise?.equipment ?? ''
+  const translateValue = (type: string, value: string): string => {
+    return t(`${type}.${value}`, { ns: 'common', defaultValue: value })
+  }
+  const muscles = exercise?.targetMuscles
+    ?.slice(0, 2)
+    .map(m => translateValue('muscle', m))
+    .join(', ') ?? ''
+  const equipment = exercise?.equipment ? translateValue('exerciseEquipment', exercise.equipment) : ''
   const imageUrls = exercise?.imageUrls ?? []
   const imageIndex = useImageRotation(imageUrls, 2000)
 

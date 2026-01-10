@@ -17,6 +17,7 @@ import {
   ProgressiveSetInput,
 } from "./shared";
 import { springs } from "../lib/animations";
+import { useTranslation } from "react-i18next";
 
 interface Exercise {
   exerciseId: string;
@@ -69,6 +70,8 @@ export function ExerciseRow({
   onSetRestTime,
   onStartSet,
 }: ExerciseRowProps) {
+  const { t } = useTranslation();
+
   // Use predicted values when available
   const defaultKg = prediction?.kg;
   const defaultReps = prediction?.reps;
@@ -132,9 +135,14 @@ export function ExerciseRow({
   };
 
   const name = exercise?.name ?? exerciseId;
-  const meta = [exercise?.targetMuscles?.[0], exercise?.equipment]
-    .filter(Boolean)
-    .join(" · ");
+  const translateValue = (type: string, value: string): string => {
+    return t(`${type}.${value}`, { ns: 'common', defaultValue: value });
+  };
+  const metaParts = [
+    exercise?.targetMuscles?.[0] ? translateValue('muscle', exercise.targetMuscles[0]) : null,
+    exercise?.equipment ? translateValue('exerciseEquipment', exercise.equipment) : null
+  ];
+  const meta = metaParts.filter(Boolean).join(" · ");
 
   const isActive = setStartedAt !== null;
   const hasParams = prediction !== null;
